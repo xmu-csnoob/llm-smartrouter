@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Any
@@ -16,9 +17,10 @@ logger = logging.getLogger("llm_router")
 class Router:
     """Routes requests using request scoring plus runtime model health."""
 
-    def __init__(self, config: RouterConfig, tracker: LatencyTracker):
+    def __init__(self, config: RouterConfig, tracker: LatencyTracker, ml_model=None):
         self.config = config
         self.tracker = tracker
+        self.ml_model = ml_model
 
     def route(self, request_body: dict[str, Any]) -> tuple[str, dict, dict]:
         """Select the best model for a request."""
@@ -51,7 +53,19 @@ class Router:
         feature_values = scorer.extract_feature_snapshot(request_body)
         text_lower = self._request_text(request_body).lower()
         legacy_rule_matches = self._collect_matching_rules(text_lower, feature_values)
-        scoring_result = scorer.score_feature_snapshot(feature_values, legacy_rule_matches)
+
+        # Try to get ML prediction if available
+        ml_prediction = None
+        if self.ml_model and self.config.ml_routing_config.get("enabled"):
+            ml_prediction = self._get_ml_prediction_sync(feature_values.get("request_text", ""))
+            if ml_prediction:
+                feature_values["ml_prediction"] = ml_prediction
+
+        scoring_result = scorer.score_feature_snapshot(
+            feature_values,
+            legacy_rule_matches,
+            ml_prediction=ml_prediction,
+        )
 
         matched_rule = legacy_rule_matches[0]["name"] if legacy_rule_matches else f"scoring:{scoring_result['task_type']}"
         matched_by = "legacy-rule+scoring" if legacy_rule_matches else "scoring"
@@ -290,8 +304,61 @@ class Router:
         score -= consecutive_errors * 15.0
         return score
 
+    def _get_ml_prediction_sync(self, text: str) -> dict[str, float] | None:
+        """Run ML prediction in a sync context.
+
+        This handles the case where we need to call async ML code from sync router.
+        """
+        if not self.ml_model:
+            return None
+
+        try:
+            # Try to get running event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # We're in an async context (e.g., FastAPI request handler)
+                    # Use create_task to schedule the coroutine
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        future = pool.submit(
+                            asyncio.run,
+                            self.ml_model.predict_complexity(
+                                text,
+                                timeout_ms=self.config.ml_routing_config["inference"]["timeout_ms"],
+                            )
+                        )
+                        return future.result(timeout=self.config.ml_routing_config["inference"]["timeout_ms"] / 1000 + 0.1)
+                else:
+                    # Loop exists but not running
+                    return loop.run_until_complete(
+                        self.ml_model.predict_complexity(
+                            text,
+                            timeout_ms=self.config.ml_routing_config["inference"]["timeout_ms"],
+                        )
+                    )
+            except RuntimeError:
+                # No event loop exists, create a new one
+                return asyncio.run(
+                    self.ml_model.predict_complexity(
+                        text,
+                        timeout_ms=self.config.ml_routing_config["inference"]["timeout_ms"],
+                    )
+                )
+        except Exception as e:
+            logger.warning(f"ML prediction failed: {e}, falling back to rule-based scoring")
+            return None
+
     def _make_scorer(self) -> RequestScorer:
-        return RequestScorer(self.config.scoring, self.config.tier_order)
+        ml_weights = None
+        if self.config.ml_routing_config.get("enabled"):
+            ml_weights = self.config.ml_routing_config.get("weights", {})
+        return RequestScorer(
+            self.config.scoring,
+            self.config.tier_order,
+            ml_model=self.ml_model,
+            ml_weights=ml_weights,
+        )
 
     @staticmethod
     def _request_text(request_body: dict[str, Any]) -> str:

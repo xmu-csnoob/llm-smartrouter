@@ -106,6 +106,21 @@ def _build_analysis_snapshot(entries: list[dict]) -> dict:
 def create_app(config: RouterConfig) -> FastAPI:
     req_logger = RequestLogger(config.logging_config)
 
+    # Initialize ML model if enabled
+    ml_model = None
+    if config.ml_routing_config.get("enabled"):
+        from .model_loader import BertTinyRouterModel
+        logger.info("Loading ML routing model...")
+        try:
+            ml_model = BertTinyRouterModel(
+                model_name=config.ml_routing_config.get("model_name", "leftfield7/bert-tiny-llm-router"),
+                cache_dir=config.ml_routing_config.get("model_cache_dir"),
+            )
+            logger.info(f"ML routing model loaded: {ml_model.get_model_info()}")
+        except Exception as e:
+            logger.error(f"Failed to load ML routing model: {e}. ML routing will be disabled.")
+            ml_model = None
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         req_logger.start()
@@ -117,7 +132,7 @@ def create_app(config: RouterConfig) -> FastAPI:
     app = FastAPI(title="llm-router", version="0.1.0", lifespan=lifespan)
 
     tracker = LatencyTracker(config.fallback)
-    router = Router(config, tracker)
+    router = Router(config, tracker, ml_model=ml_model)
     proxy = StreamProxy(config, router, tracker, req_logger)
 
     @app.post("/v1/messages")
@@ -165,12 +180,29 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     @app.post("/reload")
     async def reload_config():
-        nonlocal tracker, router, proxy
+        nonlocal tracker, router, proxy, ml_model
         try:
             await proxy.client.aclose()
             config.load()
+
+            # Reload ML model if enabled
+            if config.ml_routing_config.get("enabled"):
+                from .model_loader import BertTinyRouterModel
+                logger.info("Reloading ML routing model...")
+                try:
+                    ml_model = BertTinyRouterModel(
+                        model_name=config.ml_routing_config.get("model_name", "leftfield7/bert-tiny-llm-router"),
+                        cache_dir=config.ml_routing_config.get("model_cache_dir"),
+                    )
+                    logger.info("ML routing model reloaded")
+                except Exception as e:
+                    logger.error(f"Failed to reload ML routing model: {e}")
+                    ml_model = None
+            else:
+                ml_model = None
+
             tracker = LatencyTracker(config.fallback)
-            router = Router(config, tracker)
+            router = Router(config, tracker, ml_model=ml_model)
             proxy = StreamProxy(config, router, tracker, req_logger)
             return {"status": "reloaded"}
         except Exception as e:

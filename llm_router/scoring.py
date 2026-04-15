@@ -20,7 +20,7 @@ _STACKTRACE_PATTERN = re.compile(
 
 DEFAULT_SCORING_CONFIG: dict[str, Any] = {
     "enabled": True,
-    "legacy_rule_bonus": 2.0,
+    "legacy_rule_bonus": 0.5,
     "tiers": {
         "tier1": {"threshold": 4.5},
         "tier2": {"threshold": 3.0},
@@ -313,11 +313,19 @@ def extract_text_from_system(system: Any) -> str:
 class RequestScorer:
     """Extracts request features and maps them to tier scores."""
 
-    def __init__(self, scoring_config: dict[str, Any], tier_order: list[str], ml_model=None):
+    def __init__(
+        self,
+        scoring_config: dict[str, Any],
+        tier_order: list[str],
+        ml_model=None,
+        ml_weights: dict[str, float] | None = None,
+    ):
         self.config = scoring_config
         self.tier_order = tier_order
         self.keywords = scoring_config.get("keywords", {})
         self.ml_model = ml_model
+        # ML weights: probability multiplier for each tier (default 2.0)
+        self.ml_weights = ml_weights or {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0}
 
     def analyze_request(
         self,
@@ -427,10 +435,9 @@ class RequestScorer:
         if ml_prediction:
             decision_path.append("ml-prediction")
             detected_features.append("ml_prediction")
-            ml_weights = self.config.get("ml_weights", {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0})
             for tier, prob in ml_prediction.items():
-                if tier in tier_scores and tier in ml_weights:
-                    weight = ml_weights[tier]
+                if tier in tier_scores and tier in self.ml_weights:
+                    weight = self.ml_weights[tier]
                     tier_scores[tier] += prob * weight
                     score_breakdown[tier].append({
                         "feature": "ml_prediction",

@@ -55,6 +55,7 @@ class RouterConfig:
         self.fallback: dict = {}
         self.scoring: dict = {}
         self.server: dict = {}
+        self.ml_routing: dict = {}
         self.load()
 
     def load(self):
@@ -84,6 +85,7 @@ class RouterConfig:
         self.fallback = self._raw.get("fallback", {})
         self.scoring = merge_scoring_config(self._raw.get("scoring"))
         self.server = self._raw.get("server", {})
+        self.ml_routing = self._raw.get("ml_routing", {})
 
     @property
     def logging_config(self) -> dict:
@@ -115,3 +117,18 @@ class RouterConfig:
         if not info:
             return {}
         return self.get_provider(info["provider"])
+
+    @property
+    def ml_routing_config(self) -> dict:
+        """Return ML routing config with defaults."""
+        cfg = self.ml_routing
+        return {
+            "enabled": cfg.get("enabled", False),
+            "model_name": cfg.get("model_name", "leftfield7/bert-tiny-llm-router"),
+            "model_cache_dir": cfg.get("model_cache_dir", "./models/cache"),
+            "inference": {
+                "timeout_ms": cfg.get("inference", {}).get("timeout_ms", 50),
+                "fallback_on_error": cfg.get("inference", {}).get("fallback_on_error", True),
+            },
+            "weights": cfg.get("weights", {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0}),
+        }
