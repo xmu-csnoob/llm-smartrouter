@@ -5,6 +5,7 @@ A lightweight multi-model routing proxy with intelligent request classification,
 ## Features
 
 - **Feature-based tier scoring** — classify requests by context size, code/error signals, task intent, and legacy rule bonuses, then map the request to the right tier
+- **ML-assisted routing** — optional bert-tiny-llm-router model for semantic request complexity prediction (<10ms CPU inference)
 - **Automatic fallback** — same-tier and cross-tier degradation with configurable cooldown and error thresholds
 - **Streaming support** — full SSE passthrough with Time-To-First-Token (TTFT) tracking
 - **Zero-overhead logging** — async queue with background batch flush to daily JSONL files; no impact on request latency
@@ -168,6 +169,26 @@ Scoring extracts a structured feature snapshot from the request, then computes p
 
 Use `scoring.tiers.<tier>.threshold` to control promotion into higher tiers, and `scoring.features.<feature>.weights` to tune how strongly each signal affects each tier.
 
+### ML Routing
+
+Optional ML-based complexity prediction using the bert-tiny-llm-router model:
+
+```yaml
+ml_routing:
+  enabled: true                        # Enable ML routing
+  model_name: "leftfield7/bert-tiny-llm-router"
+  model_cache_dir: "./models/cache"
+  inference:
+    timeout_ms: 50                     # Max time to wait for prediction
+    fallback_on_error: true            # Fall back to rules on error
+  weights:
+    tier1: 2.0                         # ML prediction weight coefficient
+    tier2: 2.0
+    tier3: 2.0
+```
+
+The model predicts request complexity (simple/medium/complex) and returns probability distributions that are weighted and combined with other scoring features. If ML prediction fails or times out, the router gracefully degrades to rule-based scoring.
+
 ### Fallback
 
 When a model fails (error or high latency), the proxy attempts fallback:
@@ -299,11 +320,14 @@ llm-router/
 ├── config.yaml                 # Router configuration
 ├── requirements.txt            # Python dependencies
 ├── run.sh                      # Launcher script
+├── THIRD_PARTY_LICENSES.md     # Third-party component licenses
 ├── llm_router/
 │   ├── __main__.py             # CLI entry point
 │   ├── main.py                 # FastAPI app, routes, lifespan
 │   ├── config.py               # YAML config loader
 │   ├── router.py               # Rule evaluation, tier selection
+│   ├── scoring.py              # Feature-based scoring engine
+│   ├── model_loader.py         # ML model loader (bert-tiny-llm-router)
 │   ├── proxy.py                # Streaming proxy with fallback
 │   ├── latency.py              # Sliding-window latency tracker
 │   ├── request_logger.py       # Async JSONL logger
@@ -315,6 +339,7 @@ llm-router/
 │   │   └── hooks/useApi.ts     # API client
 │   ├── dist/                   # Built static files (served by FastAPI)
 │   └── package.json
+├── models/                     # ML model cache directory
 ├── logs/                       # JSONL log files
 └── docs/
     └── dashboard.png           # Dashboard screenshot
@@ -323,3 +348,5 @@ llm-router/
 ## License
 
 [MIT](LICENSE)
+
+This project uses third-party components. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for details.
