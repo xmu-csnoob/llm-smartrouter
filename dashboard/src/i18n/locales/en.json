@@ -3,6 +3,7 @@
     "title": "LLM Router Dashboard",
     "allModels": "All Models",
     "recentRequests": "Recent Requests",
+    "allRequests": "All Requests",
     "overview": "Overview"
   },
   "stats": {

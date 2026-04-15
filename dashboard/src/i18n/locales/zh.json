@@ -3,6 +3,7 @@
     "title": "LLM Router Dashboard",
     "allModels": "全部模型",
     "recentRequests": "最近请求",
+    "allRequests": "全部请求",
     "overview": "全局概览"
   },
   "stats": {

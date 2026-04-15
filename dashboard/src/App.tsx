@@ -12,9 +12,15 @@ function App() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
 
-  const [entries, setEntries] = useState<LogEntry[]>([])
-  const [totalEntries, setTotalEntries] = useState(0)
-  const [currentPage, setCurrentPage] = useState(1)
+  // All logs (for overview)
+  const [allEntries, setAllEntries] = useState<LogEntry[]>([])
+  const [totalAllEntries, setTotalAllEntries] = useState(0)
+  const [currentAllPage, setCurrentAllPage] = useState(1)
+
+  // Model-specific logs (for detail view)
+  const [modelEntries, setModelEntries] = useState<LogEntry[]>([])
+  const [totalModelEntries, setTotalModelEntries] = useState(0)
+  const [currentModelPage, setCurrentModelPage] = useState(1)
   const pageSize = 20
 
   const selectedModelStats = useMemo(
@@ -24,6 +30,7 @@ function App() {
     [stats, selectedModel],
   )
 
+  // Load stats
   useEffect(() => {
     const load = async () => {
       try {
@@ -36,36 +43,56 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
+  // Load all logs for overview
   useEffect(() => {
-    if (!selectedModel) return
     const load = async () => {
       try {
-        const offset = (currentPage - 1) * pageSize
-        const response = await fetchRecent(offset, pageSize, selectedModel)
-        setEntries(response.entries)
-        setTotalEntries(response.total)
+        const offset = (currentAllPage - 1) * pageSize
+        const response = await fetchRecent(offset, pageSize, null)
+        setAllEntries(response.entries)
+        setTotalAllEntries(response.total)
       } catch {}
     }
     load()
     const interval = setInterval(load, 10000)
     return () => clearInterval(interval)
-  }, [selectedModel, currentPage])
+  }, [currentAllPage])
+
+  // Load model-specific logs for detail view
+  useEffect(() => {
+    if (!selectedModel) return
+    const load = async () => {
+      try {
+        const offset = (currentModelPage - 1) * pageSize
+        const response = await fetchRecent(offset, pageSize, selectedModel)
+        setModelEntries(response.entries)
+        setTotalModelEntries(response.total)
+      } catch {}
+    }
+    load()
+    const interval = setInterval(load, 10000)
+    return () => clearInterval(interval)
+  }, [selectedModel, currentModelPage])
 
   const handleModelSelect = (model: string) => {
     setSelectedModel(model)
-    setCurrentPage(1)
-    setEntries([])
-    setTotalEntries(0)
+    setCurrentModelPage(1)
+    setModelEntries([])
+    setTotalModelEntries(0)
   }
 
   const handleBack = () => {
     setSelectedModel(null)
-    setEntries([])
-    setTotalEntries(0)
+    setModelEntries([])
+    setTotalModelEntries(0)
   }
 
-  const handlePageChange = (newOffset: number) => {
-    setCurrentPage(Math.floor(newOffset / pageSize) + 1)
+  const handleAllPageChange = (newOffset: number) => {
+    setCurrentAllPage(Math.floor(newOffset / pageSize) + 1)
+  }
+
+  const handleModelPageChange = (newOffset: number) => {
+    setCurrentModelPage(Math.floor(newOffset / pageSize) + 1)
   }
 
   return (
@@ -106,7 +133,7 @@ function App() {
               <span className="gs-eyebrow">{t('app.recentRequests')}</span>
             </div>
             <div className="gs-panel-body">
-              <LatencyChart entries={entries} />
+              <LatencyChart entries={modelEntries} />
             </div>
           </div>
           <div className="gs-panel">
@@ -115,11 +142,11 @@ function App() {
             </div>
             <div className="gs-panel-body">
               <RequestTable
-                entries={entries}
-                total={totalEntries}
-                offset={(currentPage - 1) * pageSize}
+                entries={modelEntries}
+                total={totalModelEntries}
+                offset={(currentModelPage - 1) * pageSize}
                 limit={pageSize}
-                onPageChange={handlePageChange}
+                onPageChange={handleModelPageChange}
               />
             </div>
           </div>
@@ -146,6 +173,22 @@ function App() {
               <div className="gs-panel-body">
                 <AnalysisPanel />
               </div>
+            </div>
+          </div>
+
+          {/* All Logs Table */}
+          <div className="gs-panel">
+            <div className="gs-panel-header">
+              <span className="gs-eyebrow">{t('app.allRequests')}</span>
+            </div>
+            <div className="gs-panel-body">
+              <RequestTable
+                entries={allEntries}
+                total={totalAllEntries}
+                offset={(currentAllPage - 1) * pageSize}
+                limit={pageSize}
+                onPageChange={handleAllPageChange}
+              />
             </div>
           </div>
         </div>
