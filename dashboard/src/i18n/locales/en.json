@@ -2,7 +2,8 @@
   "app": {
     "title": "LLM Router Dashboard",
     "allModels": "All Models",
-    "recentRequests": "Recent Requests"
+    "recentRequests": "Recent Requests",
+    "overview": "Overview"
   },
   "stats": {
     "totalRequests": "Total Requests",

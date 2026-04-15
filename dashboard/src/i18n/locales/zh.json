@@ -2,7 +2,8 @@
   "app": {
     "title": "LLM 路由仪表盘",
     "allModels": "全部模型",
-    "recentRequests": "最近请求"
+    "recentRequests": "最近请求",
+    "overview": "全局视图"
   },
   "stats": {
     "totalRequests": "总请求数",

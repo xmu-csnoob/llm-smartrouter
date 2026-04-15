@@ -6,12 +6,12 @@ import type { Stats } from '@/hooks/useApi'
 
 interface Props {
   stats: Stats | null
-  selectedModel?: string | null
+  onSliceClick?: (modelName: string) => void
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
 
-export function ModelChart({ stats, selectedModel }: Props) {
+export function ModelChart({ stats, onSliceClick }: Props) {
   const { t } = useI18n()
 
   if (!stats || !stats.models || Object.keys(stats.models).length === 0) {
@@ -49,14 +49,15 @@ export function ModelChart({ stats, selectedModel }: Props) {
               cy="50%"
               outerRadius={80}
               label={(props: PieLabelRenderProps) => `${props.name ?? ''} (${(((props.percent as number) ?? 0) * 100).toFixed(0)}%)`}
+              onClick={(_data, index) => {
+                if (onSliceClick && data[index]) onSliceClick(data[index].name)
+              }}
+              style={{ cursor: onSliceClick ? 'pointer' : 'default' }}
             >
-              {data.map((entry, index) => (
+              {data.map((_entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
-                  opacity={selectedModel && entry.name !== selectedModel ? 0.3 : 1}
-                  stroke={selectedModel && entry.name === selectedModel ? '#333' : 'none'}
-                  strokeWidth={selectedModel && entry.name === selectedModel ? 2 : 0}
                 />
               ))}
             </Pie>
