@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
+import { useI18n } from '@/i18n'
 import type { Stats } from '@/hooks/useApi'
 
 interface Props {
@@ -11,14 +12,16 @@ interface Props {
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
 
 export function ModelChart({ stats, selectedModel }: Props) {
+  const { t } = useI18n()
+
   if (!stats || !stats.models || Object.keys(stats.models).length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Model Distribution</CardTitle>
+          <CardTitle>{t('chart.modelDistribution')}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[250px] text-muted-foreground">
-          No data yet
+          {t('chart.noData')}
         </CardContent>
       </Card>
     )
@@ -33,7 +36,7 @@ export function ModelChart({ stats, selectedModel }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Model Distribution</CardTitle>
+        <CardTitle>{t('chart.modelDistribution')}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={250}>
@@ -61,7 +64,7 @@ export function ModelChart({ stats, selectedModel }: Props) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(value: any, name: any, props: any) => {
                 const payload = props?.payload
-                return [`${value} requests (avg ${payload?.avgLatency ?? '—'}ms)`, name]
+                return [t('chart.requests', { value, avgLatency: payload?.avgLatency ?? '—' }), name]
               }}
             />
             <Legend />

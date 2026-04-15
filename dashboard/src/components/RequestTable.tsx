@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useI18n } from '@/i18n'
 import type { LogEntry } from '@/hooks/useApi'
 
 interface Props {
@@ -41,10 +42,12 @@ function tierColor(tier: string) {
 }
 
 export function RequestTable({ entries, total, offset, limit, onPageChange }: Props) {
+  const { t } = useI18n()
+
   if (entries.length === 0 && total === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        No requests logged yet
+        {t('table.noRequests')}
       </div>
     )
   }
@@ -58,13 +61,13 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Tier</TableHead>
-              <TableHead>Rule</TableHead>
-              <TableHead className="text-right">Latency</TableHead>
-              <TableHead className="text-right">TTFT</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('table.time')}</TableHead>
+              <TableHead>{t('table.model')}</TableHead>
+              <TableHead>{t('table.tier')}</TableHead>
+              <TableHead>{t('table.rule')}</TableHead>
+              <TableHead className="text-right">{t('table.latency')}</TableHead>
+              <TableHead className="text-right">{t('table.ttft')}</TableHead>
+              <TableHead>{t('table.status')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,10 +106,10 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
             onClick={() => onPageChange(offset - limit)}
             disabled={currentPage === 1}
           >
-            Previous
+            {t('table.previous')}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            {t('table.pageInfo', { current: currentPage, total: totalPages })}
           </span>
           <Button
             variant="outline"
@@ -114,7 +117,7 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
             onClick={() => onPageChange(offset + limit)}
             disabled={currentPage >= totalPages}
           >
-            Next
+            {t('table.next')}
           </Button>
         </div>
       )}

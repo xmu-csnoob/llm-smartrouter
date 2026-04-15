@@ -1,0 +1,48 @@
+{
+  "app": {
+    "title": "LLM Router Dashboard",
+    "allModels": "All Models",
+    "recentRequests": "Recent Requests"
+  },
+  "stats": {
+    "totalRequests": "Total Requests",
+    "period24h": "24h period",
+    "avgLatency": "Avg Latency",
+    "ttft": "TTFT: {value}",
+    "fallbackRate": "Fallback Rate",
+    "perModelNA": "per-model not available",
+    "fallbacks": "{count} fallbacks",
+    "errorRate": "Error Rate",
+    "errors": "{count} errors"
+  },
+  "table": {
+    "noRequests": "No requests logged yet",
+    "time": "Time",
+    "model": "Model",
+    "tier": "Tier",
+    "rule": "Rule",
+    "latency": "Latency",
+    "ttft": "TTFT",
+    "status": "Status",
+    "previous": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {current} of {total}"
+  },
+  "chart": {
+    "modelDistribution": "Model Distribution",
+    "noData": "No data yet",
+    "latencyTrend": "Latency Trend",
+    "request": "Request",
+    "requests": "{value} requests (avg {avgLatency}ms)",
+    "requestLabel": "Request {label} — {model}",
+    "requestLabelShort": "Request {label}"
+  },
+  "analysis": {
+    "title": "Log Analysis",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing...",
+    "analyzingLogs": "Analyzing logs...",
+    "placeholder": "Select a time range and click Analyze to get LLM-powered insights",
+    "failed": "Analysis failed"
+  }
+}

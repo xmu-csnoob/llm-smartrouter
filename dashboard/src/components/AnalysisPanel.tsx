@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
 import { analyzeLogs } from '@/hooks/useApi'
+import { useI18n } from '@/i18n'
 
 export function AnalysisPanel() {
+  const { t, locale } = useI18n()
   const [hours, setHours] = useState(24)
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,11 +24,11 @@ export function AnalysisPanel() {
     setError(null)
 
     try {
-      await analyzeLogs(hours, (text) => {
+      await analyzeLogs(hours, locale, (text) => {
         setAnalysis(prev => prev + text)
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Analysis failed')
+      setError(e instanceof Error ? e.message : t('analysis.failed'))
     } finally {
       setLoading(false)
     }
@@ -36,7 +38,7 @@ export function AnalysisPanel() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Log Analysis</CardTitle>
+          <CardTitle>{t('analysis.title')}</CardTitle>
           <div className="flex items-center gap-2">
             {timeRanges.map(range => (
               <Button
@@ -53,7 +55,7 @@ export function AnalysisPanel() {
               onClick={handleAnalyze}
               disabled={loading}
             >
-              {loading ? 'Analyzing...' : 'Analyze'}
+              {loading ? t('analysis.analyzing') : t('analysis.analyze')}
             </Button>
           </div>
         </div>
@@ -68,7 +70,7 @@ export function AnalysisPanel() {
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            {loading ? 'Analyzing logs...' : 'Select a time range and click Analyze to get LLM-powered insights'}
+            {loading ? t('analysis.analyzingLogs') : t('analysis.placeholder')}
           </div>
         )}
       </CardContent>

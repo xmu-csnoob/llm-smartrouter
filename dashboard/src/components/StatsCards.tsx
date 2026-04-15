@@ -1,5 +1,6 @@
 import { Activity, AlertTriangle, ArrowRightLeft, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useI18n } from '@/i18n'
 import type { Stats, ModelStats } from '@/hooks/useApi'
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function StatsCards({ stats, modelStats }: Props) {
+  const { t } = useI18n()
   const isModelView = !!modelStats
 
   const total = isModelView ? (modelStats?.count ?? 0) : (stats?.total ?? 0)
@@ -24,28 +26,28 @@ export function StatsCards({ stats, modelStats }: Props) {
 
   const cards = [
     {
-      title: 'Total Requests',
+      title: t('stats.totalRequests'),
       value: total,
       icon: Activity,
-      description: '24h period',
+      description: t('stats.period24h'),
     },
     {
-      title: 'Avg Latency',
+      title: t('stats.avgLatency'),
       value: avgLatency,
       icon: Clock,
-      description: `TTFT: ${avgTtft}`,
+      description: t('stats.ttft', { value: avgTtft }),
     },
     {
-      title: 'Fallback Rate',
+      title: t('stats.fallbackRate'),
       value: isModelView ? '—' : (stats ? `${stats.fallback_rate}%` : '—'),
       icon: ArrowRightLeft,
-      description: isModelView ? 'per-model not available' : (stats ? `${stats.fallbacks} fallbacks` : ''),
+      description: isModelView ? t('stats.perModelNA') : (stats ? t('stats.fallbacks', { count: stats.fallbacks }) : ''),
     },
     {
-      title: 'Error Rate',
+      title: t('stats.errorRate'),
       value: errorRate,
       icon: AlertTriangle,
-      description: `${errorCount} errors`,
+      description: t('stats.errors', { count: errorCount }),
     },
   ]
 

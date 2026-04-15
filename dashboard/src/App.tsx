@@ -72,14 +72,12 @@ function App() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('app.title')}</h1>
         <div className="flex items-center gap-3">
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as 'en' | 'zh')}
-            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <button
+            onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            <option value="en">English</option>
-            <option value="zh">中文</option>
-          </select>
+            {locale === 'en' ? '中文' : 'EN'}
+          </button>
           <select
             value={selectedModel ?? ''}
             onChange={(e) => handleModelChange(e.target.value)}
