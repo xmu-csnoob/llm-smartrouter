@@ -13,7 +13,7 @@ _FILE_PATH_PATTERN = re.compile(
     r"(?:^|[\s(])(?:/?[\w.\-]+/)+[\w.\-]+\.\w+|[A-Za-z]:\\(?:[\w.\-]+\\)+[\w.\-]+\.\w+"
 )
 _STACKTRACE_PATTERN = re.compile(
-    r"(traceback|exception|stack trace|stacktrace|error:|warning:|at\s+[\w.$]+|\bline\s+\d+\b)",
+    r"(traceback|exception|stack trace|stacktrace|error:|warning:|\bat\s+[\w.$]+|\bline\s+\d+\b)",
     re.IGNORECASE,
 )
 
@@ -22,7 +22,7 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
     "enabled": True,
     "legacy_rule_bonus": 2.0,
     "tiers": {
-        "tier1": {"threshold": 6.0},
+        "tier1": {"threshold": 4.5},
         "tier2": {"threshold": 3.0},
     },
     "features": {
@@ -131,10 +131,12 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
             "migration",
             "upgrade",
             "rewrite",
+            "refactor",
             "重构",
             "迁移",
             "升级",
             "重写",
+            "改造",
         ],
         "performance": [
             "performance",
@@ -173,12 +175,22 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
             "add",
             "feature",
             "write code",
+            "write a",
+            "write an",
+            "endpoint",
+            "function",
+            "module",
+            "service",
+            "class",
+            "method",
+            "handler",
             "实现",
             "开发",
             "新增",
             "写代码",
             "改一下",
             "修改",
+            "编写",
         ],
         "generation": [
             "readme",
@@ -191,6 +203,17 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
             "polish",
             "rewrite",
             "readme.md",
+            "workflow",
+            "pagination",
+            "middleware",
+            "validation",
+            "hashing",
+            "serialization",
+            "rate limiter",
+            "ci/cd",
+            "github actions",
+            "rest api",
+            "数据类",
             "文档",
             "说明",
             "总结",
@@ -198,6 +221,9 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
             "润色",
             "改写",
             "报告",
+            "分页",
+            "限流",
+            "工作流",
         ],
         "constraint": [
             "must",
@@ -287,10 +313,11 @@ def extract_text_from_system(system: Any) -> str:
 class RequestScorer:
     """Extracts request features and maps them to tier scores."""
 
-    def __init__(self, scoring_config: dict[str, Any], tier_order: list[str]):
+    def __init__(self, scoring_config: dict[str, Any], tier_order: list[str], ml_model=None):
         self.config = scoring_config
         self.tier_order = tier_order
         self.keywords = scoring_config.get("keywords", {})
+        self.ml_model = ml_model
 
     def analyze_request(
         self,
@@ -350,12 +377,14 @@ class RequestScorer:
             "stacktrace_count": stacktrace_count,
         }
         feature_values["task_type"] = self._classify_task_type(feature_values)
+        feature_values["request_text"] = combined_text  # Add for ML model
         return feature_values
 
     def score_feature_snapshot(
         self,
         feature_values: dict[str, Any],
         legacy_rule_matches: list[dict[str, Any]] | None = None,
+        ml_prediction: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         tier_scores = {tier: 0.0 for tier in self.tier_order}
         score_breakdown = {tier: [] for tier in self.tier_order}
@@ -393,6 +422,21 @@ class RequestScorer:
                     "weight": bonus,
                     "reason": match.get("reason") or f"legacy rule matched target={target}",
                 })
+
+        # Apply ML prediction if available
+        if ml_prediction:
+            decision_path.append("ml-prediction")
+            detected_features.append("ml_prediction")
+            ml_weights = self.config.get("ml_weights", {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0})
+            for tier, prob in ml_prediction.items():
+                if tier in tier_scores and tier in ml_weights:
+                    weight = ml_weights[tier]
+                    tier_scores[tier] += prob * weight
+                    score_breakdown[tier].append({
+                        "feature": "ml_prediction",
+                        "weight": prob * weight,
+                        "reason": f"ML model predicts {tier} with probability {prob:.3f}",
+                    })
 
         selected_tier = self._select_tier(tier_scores)
         decision_path.append(f"tier:{selected_tier}")
@@ -507,3 +551,25 @@ class RequestScorer:
     @staticmethod
     def _count_hits(text: str, keywords: list[str]) -> int:
         return sum(1 for keyword in keywords if keyword and keyword.lower() in text)
+
+    async def get_ml_prediction(self, text: str, timeout_ms: int = 50) -> dict[str, float] | None:
+        """Get ML model prediction for request complexity.
+
+        Args:
+            text: Request text to classify
+            timeout_ms: Maximum time to wait for prediction
+
+        Returns:
+            Dictionary with tier probabilities, or None if ML model unavailable
+        """
+        if not self.ml_model:
+            return None
+
+        try:
+            return await self.ml_model.predict_complexity(text, timeout_ms=timeout_ms)
+        except Exception as e:
+            # Log but don't fail - will fall back to rule-based scoring
+            import logging
+            logger = logging.getLogger("llm_router")
+            logger.warning(f"ML prediction failed: {e}, using rule-based scoring")
+            return None
