@@ -22,35 +22,6 @@ class Router:
 
     def route(self, request_body: dict[str, Any]) -> tuple[str, dict, dict]:
         """Select the best model for a request."""
-        requested_model = request_body.get("model", "auto")
-
-        if requested_model != "auto" and requested_model in self.config.model_registry:
-            scorer = self._make_scorer()
-            feature_values = scorer.extract_feature_snapshot(request_body)
-            text_lower = self._request_text(request_body).lower()
-            legacy_rule_matches = self._collect_matching_rules(text_lower, feature_values)
-            scoring_result = scorer.score_feature_snapshot(feature_values, legacy_rule_matches)
-            requested_model_tier = self.config.model_registry[requested_model]["tier"]
-            provider_cfg = self.config.get_provider_for_model(requested_model)
-            logger.info("Passthrough: model=%s", requested_model)
-            return requested_model, provider_cfg, {
-                "matched_rule": "explicit-model",
-                "matched_by": "passthrough",
-                "estimated_tokens": feature_values.get("estimated_tokens", 0),
-                "message_count": feature_values.get("message_count", 0),
-                "selected_tier": scoring_result["selected_tier"],
-                "requested_model_tier": requested_model_tier,
-                "tier_scores": scoring_result["tier_scores"],
-                "score_breakdown": scoring_result["score_breakdown"],
-                "detected_features": scoring_result["detected_features"],
-                "feature_values": feature_values,
-                "request_shape": scoring_result["request_shape"],
-                "task_type": scoring_result["task_type"],
-                "decision_path": ["explicit-model", "observability-score", f"requested-tier:{requested_model_tier}"],
-                "legacy_rule_matches": legacy_rule_matches,
-                "observability_only": True,
-            }
-
         if self.config.scoring.get("enabled", True):
             return self._route_with_scoring(request_body)
         return self._route_by_legacy_rules(request_body)
@@ -75,6 +46,7 @@ class Router:
         }
 
     def _route_with_scoring(self, request_body: dict[str, Any]) -> tuple[str, dict, dict]:
+        requested_model = request_body.get("model", "auto")
         scorer = self._make_scorer()
         feature_values = scorer.extract_feature_snapshot(request_body)
         text_lower = self._request_text(request_body).lower()
@@ -90,6 +62,7 @@ class Router:
             "estimated_tokens": feature_values.get("estimated_tokens", 0),
             "message_count": feature_values.get("message_count", 0),
             "selected_tier": scoring_result["selected_tier"],
+            "requested_model": requested_model,
             "tier_scores": scoring_result["tier_scores"],
             "score_breakdown": scoring_result["score_breakdown"],
             "detected_features": scoring_result["detected_features"],
@@ -100,7 +73,8 @@ class Router:
             "legacy_rule_matches": legacy_rule_matches,
         }
         logger.info(
-            "Scored request: task=%s selected_tier=%s scores=%s",
+            "Scored request: requested=%s task=%s selected_tier=%s scores=%s",
+            requested_model,
             scoring_result["task_type"],
             scoring_result["selected_tier"],
             scoring_result["tier_scores"],

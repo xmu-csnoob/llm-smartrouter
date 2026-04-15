@@ -33,9 +33,6 @@ def make_router() -> tuple[Router, LatencyTracker]:
               provider: primary
 
         rules:
-          - name: "explicit-model"
-            match: "model_is_known"
-            action: "passthrough"
           - name: "legacy-complex"
             keywords: ["troubleshoot", "root cause"]
             target: tier1
@@ -129,7 +126,7 @@ class RouterScoringTests(unittest.TestCase):
         self.assertEqual(model_id, "tier2-fast")
         self.assertEqual(route_info["model_selection"]["selected_model"], "tier2-fast")
 
-    def test_explicit_model_passthrough_still_extracts_observability_features(self):
+    def test_explicit_model_is_routed_intelligently(self):
         router, _tracker = make_router()
         model_id, _provider, route_info = router.route({
             "model": "tier1-model",
@@ -139,14 +136,13 @@ class RouterScoringTests(unittest.TestCase):
             }],
         })
 
-        self.assertEqual(model_id, "tier1-model")
-        self.assertEqual(route_info["matched_by"], "passthrough")
-        self.assertEqual(route_info["requested_model_tier"], "tier1")
+        # Explicit model is no longer passthrough — scoring decides the tier
+        self.assertEqual(route_info["matched_by"], "scoring")
+        self.assertEqual(route_info["requested_model"], "tier1-model")
         self.assertEqual(route_info["selected_tier"], "tier2")
         self.assertEqual(route_info["task_type"], "generation")
         self.assertTrue(route_info["feature_values"])
         self.assertIn("generation_heavy", route_info["detected_features"])
-        self.assertTrue(route_info["observability_only"])
 
     def test_analysis_snapshot_treats_missing_fields_as_missing_not_unknown(self):
         snapshot = _build_analysis_snapshot([

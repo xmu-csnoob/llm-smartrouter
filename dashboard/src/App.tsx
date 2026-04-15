@@ -12,7 +12,6 @@ function App() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
 
-  // Model detail state
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [totalEntries, setTotalEntries] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
@@ -25,22 +24,18 @@ function App() {
     [stats, selectedModel],
   )
 
-  // Load global stats
   useEffect(() => {
     const load = async () => {
       try {
         const s = await fetchStats()
         setStats(s)
-      } catch {
-        // backend not available yet
-      }
+      } catch {}
     }
     load()
     const interval = setInterval(load, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  // Load model-specific entries when in model detail
   useEffect(() => {
     if (!selectedModel) return
     const load = async () => {
@@ -49,9 +44,7 @@ function App() {
         const response = await fetchRecent(offset, pageSize, selectedModel)
         setEntries(response.entries)
         setTotalEntries(response.total)
-      } catch {
-        // backend not available yet
-      }
+      } catch {}
     }
     load()
     const interval = setInterval(load, 10000)
@@ -76,60 +69,84 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          {selectedModel && (
+    <>
+      <div className="scanlines" />
+      <div className="min-h-screen p-4 md:p-6">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            {selectedModel && (
+              <button
+                onClick={handleBack}
+                className="btn-terminal text-muted-foreground hover:text-foreground"
+              >
+                ← {t('app.overview')}
+              </button>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="status-dot online pulse-live" />
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                {selectedModel ? (
+                  <span className="font-mono text-lg">{selectedModel}</span>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">LLM Router</span>{' '}
+                    <span className="text-primary">Dashboard</span>
+                  </>
+                )}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleBack}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+              className="btn-terminal min-w-[60px]"
             >
-              ← {t('app.overview')}
+              {locale === 'en' ? '中文' : 'EN'}
             </button>
-          )}
-          <h1 className="text-2xl font-bold">
-            {selectedModel ? selectedModel : t('app.title')}
-          </h1>
-        </div>
-        <button
-          onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          {locale === 'en' ? '中文' : 'EN'}
-        </button>
-      </div>
+          </div>
+        </header>
 
-      {selectedModel ? (
-        // === Model Detail View ===
-        <>
-          <StatsCards stats={stats} modelStats={selectedModelStats} />
-          <div className="mt-6">
-            <LatencyChart entries={entries} />
+        {selectedModel ? (
+          // Model Detail View
+          <div className="space-y-4">
+            <StatsCards stats={stats} modelStats={selectedModelStats} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="hud-card rounded-lg p-4">
+                <h3 className="label-text mb-4">Latency Trend</h3>
+                <LatencyChart entries={entries} />
+              </div>
+            </div>
+            <div className="hud-card rounded-lg p-4">
+              <h3 className="label-text mb-3">{t('app.recentRequests')}</h3>
+              <RequestTable
+                entries={entries}
+                total={totalEntries}
+                offset={(currentPage - 1) * pageSize}
+                limit={pageSize}
+                onPageChange={handlePageChange}
+              />
+            </div>
           </div>
-          <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-3">{t('app.recentRequests')}</h2>
-            <RequestTable
-              entries={entries}
-              total={totalEntries}
-              offset={(currentPage - 1) * pageSize}
-              limit={pageSize}
-              onPageChange={handlePageChange}
-            />
+        ) : (
+          // Overview
+          <div className="space-y-4">
+            <StatsCards stats={stats} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="hud-card rounded-lg p-4 lg:col-span-1">
+                <h3 className="label-text mb-4">Model Distribution</h3>
+                <ModelChart stats={stats} onSliceClick={handleModelSelect} />
+              </div>
+
+              <div className="hud-card rounded-lg p-4 lg:col-span-2">
+                <AnalysisPanel />
+              </div>
+            </div>
           </div>
-        </>
-      ) : (
-        // === Overview ===
-        <>
-          <StatsCards stats={stats} />
-          <div className="mt-6">
-            <ModelChart stats={stats} onSliceClick={handleModelSelect} />
-          </div>
-          <div className="mt-6">
-            <AnalysisPanel />
-          </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
 
