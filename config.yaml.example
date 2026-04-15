@@ -1,0 +1,65 @@
+# ===== Provider Definitions =====
+providers:
+  glm:
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key: "${GLM_API_KEY}"
+    api_format: "anthropic"
+    timeout: 120
+
+# ===== Model Pool =====
+models:
+  tier1:  # Frontier: design, refactoring, hard bugs
+    - id: "glm-5.1"
+      provider: glm
+
+  tier2:  # Workhorse: feature implementation
+    - id: "glm-5"
+      provider: glm
+
+  tier3:  # Routine: conflicts, compile errors, simple tasks
+    - id: "glm-4.7"
+      provider: glm
+
+# ===== Routing Rules =====
+rules:
+  - name: "explicit-model"
+    match: "model_is_known"
+    action: "passthrough"
+
+  - name: "complex-request"
+    match: "estimated_tokens > 4000 or message_count > 20"
+    target: tier1
+
+  - name: "keyword-match"
+    keywords: ["refactor", "design", "architect", "debug", "fix bug", "root cause", "redesign", "rewrite", "migrate"]
+    target: tier1
+
+  - name: "medium-request"
+    match: "estimated_tokens > 2000"
+    target: tier2
+
+  - name: "default"
+    target: tier3
+
+# ===== Fallback / Degradation =====
+fallback:
+  latency_threshold_ms: 30000
+  error_threshold: 3
+  cooldown_seconds: 120
+  cross_provider: true
+  cross_tier: true
+  degradation_order: [tier1, tier2, tier3]
+
+# ===== Request Logging =====
+logging:
+  enabled: true
+  dir: "./logs"
+  flush_interval_seconds: 2
+  flush_batch_size: 50
+  retention_days: 30
+
+# ===== Server =====
+server:
+  host: "127.0.0.1"
+  port: 8000
+  log_level: "info"
