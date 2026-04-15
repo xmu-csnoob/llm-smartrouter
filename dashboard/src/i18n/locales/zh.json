@@ -1,29 +1,29 @@
 {
   "app": {
-    "title": "LLM 路由仪表盘",
+    "title": "LLM Router Dashboard",
     "allModels": "全部模型",
     "recentRequests": "最近请求",
-    "overview": "全局视图"
+    "overview": "全局概览"
   },
   "stats": {
     "totalRequests": "总请求数",
     "period24h": "近 24 小时",
-    "avgLatency": "平均延迟",
-    "ttft": "首字延迟: {value}",
-    "fallbackRate": "降级率",
-    "perModelNA": "单模型视图不可用",
-    "fallbacks": "{count} 次降级",
+    "avgLatency": "平均 Latency",
+    "ttft": "TTFT: {value}",
+    "fallbackRate": "Fallback 率",
+    "perModelNA": "单模型不可用",
+    "fallbacks": "{count} 次 fallback",
     "errorRate": "错误率",
     "errors": "{count} 个错误"
   },
   "table": {
     "noRequests": "暂无请求记录",
     "time": "时间",
-    "model": "模型",
-    "tier": "层级",
-    "rule": "规则",
-    "latency": "延迟",
-    "ttft": "首字延迟",
+    "model": "Model",
+    "tier": "Tier",
+    "rule": "Rule",
+    "latency": "Latency",
+    "ttft": "TTFT",
     "status": "状态",
     "previous": "上一页",
     "next": "下一页",
@@ -32,18 +32,18 @@
   "chart": {
     "modelDistribution": "模型分布",
     "noData": "暂无数据",
-    "latencyTrend": "延迟趋势",
+    "latencyTrend": "Latency 趋势",
     "request": "请求",
-    "requests": "{value} 次请求 (平均 {avgLatency}ms)",
+    "requests": "{value} 次请求 (avg {avgLatency}ms)",
     "requestLabel": "请求 {label} — {model}",
     "requestLabelShort": "请求 {label}"
   },
   "analysis": {
     "title": "日志分析",
-    "analyze": "分析",
+    "analyze": "开始分析",
     "analyzing": "分析中...",
     "analyzingLogs": "正在分析日志...",
-    "placeholder": "选择时间范围并点击「分析」获取 LLM 驱动的洞察",
+    "placeholder": "选择时间范围，点击「开始分析」查看 AI 分析结果",
     "failed": "分析失败"
   }
 }
