@@ -17,6 +17,8 @@ from .request_logger import RequestLogger
 
 logger = logging.getLogger("llm_router")
 
+LOG_SCHEMA_VERSION = 2
+
 
 class StreamProxy:
     """Forwards requests to providers with SSE passthrough and fallback."""
@@ -46,9 +48,11 @@ class StreamProxy:
         # Build log entry base
         request_id = str(uuid.uuid4())
         log_entry = {
+            "log_schema_version": LOG_SCHEMA_VERSION,
             "request_id": request_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "requested_model": requested_model,
+            "requested_model_tier": route_info.get("requested_model_tier"),
             "estimated_tokens": route_info.get("estimated_tokens", 0),
             "message_count": route_info.get("message_count", 0),
             "matched_rule": route_info.get("matched_rule"),
@@ -64,6 +68,7 @@ class StreamProxy:
             "decision_path": route_info.get("decision_path", []),
             "legacy_rule_matches": route_info.get("legacy_rule_matches", []),
             "model_selection": route_info.get("model_selection", {}),
+            "observability_only": route_info.get("observability_only", False),
             "routed_model": model_id,
             "routed_tier": tier,
             "routed_provider": model_info.get("provider", "unknown"),

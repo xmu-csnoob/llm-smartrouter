@@ -5,11 +5,12 @@ import type { Stats } from '@/hooks/useApi'
 
 interface Props {
   stats: Stats | null
+  selectedModel?: string | null
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe']
 
-export function ModelChart({ stats }: Props) {
+export function ModelChart({ stats, selectedModel }: Props) {
   if (!stats || !stats.models || Object.keys(stats.models).length === 0) {
     return (
       <Card>
@@ -46,8 +47,14 @@ export function ModelChart({ stats }: Props) {
               outerRadius={80}
               label={(props: PieLabelRenderProps) => `${props.name ?? ''} (${(((props.percent as number) ?? 0) * 100).toFixed(0)}%)`}
             >
-              {data.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                  opacity={selectedModel && entry.name !== selectedModel ? 0.3 : 1}
+                  stroke={selectedModel && entry.name === selectedModel ? '#333' : 'none'}
+                  strokeWidth={selectedModel && entry.name === selectedModel ? 2 : 0}
+                />
               ))}
             </Pie>
             <Tooltip

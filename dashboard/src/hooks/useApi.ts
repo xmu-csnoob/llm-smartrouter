@@ -27,6 +27,16 @@ export interface RecentResponse {
   limit: number
 }
 
+export interface ModelStats {
+  count: number;
+  errors: number;
+  total_latency: number;
+  avg_latency_ms: number;
+  total_ttft?: number;
+  ttft_samples?: number;
+  avg_ttft_ms?: number | null;
+}
+
 export interface Stats {
   total: number;
   errors: number;
@@ -35,12 +45,7 @@ export interface Stats {
   fallback_rate: number;
   avg_latency_ms: number | null;
   avg_ttft_ms: number | null;
-  models: Record<string, {
-    count: number;
-    errors: number;
-    total_latency: number;
-    avg_latency_ms: number;
-  }>;
+  models: Record<string, ModelStats>;
 }
 
 export async function fetchRecent(offset = 0, limit = 50): Promise<RecentResponse> {

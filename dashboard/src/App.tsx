@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { StatsCards } from './components/StatsCards'
 import { RequestTable } from './components/RequestTable'
 import { ModelChart } from './components/ModelChart'
@@ -11,7 +11,27 @@ function App() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [totalEntries, setTotalEntries] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const pageSize = 20
+
+  const availableModels = useMemo(
+    () => stats ? Object.keys(stats.models) : [],
+    [stats],
+  )
+
+  const filteredEntries = useMemo(
+    () => selectedModel
+      ? entries.filter(e => e.routed_model === selectedModel)
+      : entries,
+    [entries, selectedModel],
+  )
+
+  const selectedModelStats = useMemo(
+    () => selectedModel && stats?.models[selectedModel]
+      ? stats.models[selectedModel]
+      : null,
+    [stats, selectedModel],
+  )
 
   const loadEntries = async (page: number) => {
     try {
@@ -47,13 +67,30 @@ function App() {
     setCurrentPage(newPage)
   }
 
+  const handleModelChange = (value: string) => {
+    setSelectedModel(value || null)
+    setCurrentPage(1)
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
-      <h1 className="text-2xl font-bold mb-6">LLM Router Dashboard</h1>
-      <StatsCards stats={stats} />
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">LLM Router Dashboard</h1>
+        <select
+          value={selectedModel ?? ''}
+          onChange={(e) => handleModelChange(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="">All Models</option>
+          {availableModels.map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+      <StatsCards stats={stats} modelStats={selectedModelStats} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <ModelChart stats={stats} />
-        <LatencyChart entries={entries} />
+        <ModelChart stats={stats} selectedModel={selectedModel} />
+        <LatencyChart entries={filteredEntries} />
       </div>
       <div className="mt-6">
         <AnalysisPanel />
@@ -61,7 +98,7 @@ function App() {
       <div className="mt-6">
         <h2 className="text-lg font-semibold mb-3">Recent Requests</h2>
         <RequestTable
-          entries={entries}
+          entries={filteredEntries}
           total={totalEntries}
           offset={(currentPage - 1) * pageSize}
           limit={pageSize}

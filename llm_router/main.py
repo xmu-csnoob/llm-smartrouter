@@ -1,13 +1,15 @@
 """FastAPI application — OpenAI-compatible API proxy."""
 
+from collections import Counter
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -19,6 +21,86 @@ from .request_logger import RequestLogger
 from .schemas import ModelInfo, StatusResponse
 
 logger = logging.getLogger("llm_router")
+
+
+def _format_counter(counter: Counter, limit: int | None = None, empty_label: str = "  - none") -> str:
+    if not counter:
+        return empty_label
+    items = counter.most_common(limit)
+    return "\n".join(f"  - {key}: {value}" for key, value in items)
+
+
+def _build_analysis_snapshot(entries: list[dict]) -> dict:
+    total = len(entries)
+    errors = sum(1 for entry in entries if entry.get("status") != 200)
+    fallbacks = sum(1 for entry in entries if entry.get("is_fallback"))
+    latencies = [entry["latency_ms"] for entry in entries if entry.get("latency_ms") is not None]
+    ttfts = [entry["ttft_ms"] for entry in entries if entry.get("ttft_ms") is not None]
+
+    model_counts = Counter(entry.get("routed_model", "unknown") for entry in entries)
+    rule_counts = Counter(entry.get("matched_rule", "unknown") for entry in entries)
+    routed_tier_counts = Counter(entry.get("routed_tier") for entry in entries if entry.get("routed_tier"))
+    selected_tier_counts = Counter(entry.get("selected_tier") for entry in entries if entry.get("selected_tier"))
+    task_type_counts = Counter(entry.get("task_type") for entry in entries if entry.get("task_type"))
+    schema_version_counts = Counter(str(entry.get("log_schema_version", "legacy")) for entry in entries)
+    feature_counts: Counter = Counter()
+    for entry in entries:
+        feature_counts.update(entry.get("detected_features", []))
+
+    explicit_passthrough_count = sum(1 for entry in entries if entry.get("matched_by") == "passthrough")
+    streaming_count = sum(1 for entry in entries if entry.get("is_stream"))
+    feature_snapshot_count = sum(1 for entry in entries if entry.get("feature_values"))
+    selected_tier_count = sum(1 for entry in entries if entry.get("selected_tier"))
+    observability_only_count = sum(1 for entry in entries if entry.get("observability_only"))
+
+    avg_latency = round(sum(latencies) / len(latencies), 1) if latencies else None
+    avg_ttft = round(sum(ttfts) / len(ttfts), 1) if ttfts else None
+
+    high_latency = [entry for entry in entries if avg_latency and entry.get("latency_ms") and entry["latency_ms"] > avg_latency * 2]
+    error_entries = [entry for entry in entries if entry.get("status") != 200][:5]
+    fallback_entries = [entry for entry in entries if entry.get("is_fallback")][:5]
+
+    outlier_info = ""
+    if high_latency:
+        outlier_info += f"\nHigh-latency requests ({len(high_latency)}):\n"
+        for entry in high_latency[:5]:
+            outlier_info += f"  - {entry.get('routed_model')} {entry['latency_ms']}ms (rule: {entry.get('matched_rule')})\n"
+    if error_entries:
+        outlier_info += "\nError samples:\n"
+        for entry in error_entries:
+            outlier_info += f"  - {entry.get('routed_model')} status={entry['status']} error={entry.get('error', 'N/A')[:100]}\n"
+    if fallback_entries:
+        outlier_info += "\nFallback samples:\n"
+        for entry in fallback_entries:
+            chain = " -> ".join(fallback.get("model", "?") for fallback in entry.get("fallback_chain", []))
+            outlier_info += f"  - {entry.get('routed_model')} (chain: {chain})\n"
+
+    return {
+        "total": total,
+        "errors": errors,
+        "error_rate": round(errors / total * 100, 1) if total else 0,
+        "fallbacks": fallbacks,
+        "fallback_rate": round(fallbacks / total * 100, 1) if total else 0,
+        "avg_latency": avg_latency,
+        "avg_latency_display": f"{avg_latency}ms" if avg_latency is not None else "N/A",
+        "avg_ttft": avg_ttft,
+        "avg_ttft_display": f"{avg_ttft}ms" if avg_ttft is not None else "N/A (no streaming samples)",
+        "model_summary": _format_counter(model_counts),
+        "rule_summary": _format_counter(rule_counts),
+        "routed_tier_summary": _format_counter(routed_tier_counts),
+        "selected_tier_summary": _format_counter(selected_tier_counts),
+        "task_type_summary": _format_counter(task_type_counts),
+        "feature_summary": _format_counter(feature_counts, limit=8),
+        "schema_version_summary": _format_counter(schema_version_counts),
+        "explicit_passthrough_count": explicit_passthrough_count,
+        "streaming_count": streaming_count,
+        "feature_snapshot_count": feature_snapshot_count,
+        "selected_tier_count": selected_tier_count,
+        "missing_feature_snapshot_count": total - feature_snapshot_count,
+        "missing_selected_tier_count": total - selected_tier_count,
+        "observability_only_count": observability_only_count,
+        "outlier_info": outlier_info,
+    }
 
 
 def create_app(config: RouterConfig) -> FastAPI:
@@ -147,88 +229,41 @@ def create_app(config: RouterConfig) -> FastAPI:
         if not result:
             return JSONResponse(status_code=503, content={"error": "No model available for analysis"})
 
-        model_id, provider_cfg, tier = result
+        model_id, provider_cfg, _tier = result
         entries = req_logger.get_entries_for_analysis(request.hours)
 
         if not entries:
             return JSONResponse(content={"error": "No log entries found for the specified time range"})
 
-        # Build summary statistics
-        total = len(entries)
-        errors = sum(1 for e in entries if e.get("status") != 200)
-        fallbacks = sum(1 for e in entries if e.get("is_fallback"))
-        latencies = [e["latency_ms"] for e in entries if e.get("latency_ms") is not None]
-        ttfts = [e["ttft_ms"] for e in entries if e.get("ttft_ms") is not None]
-        avg_latency = round(sum(latencies) / len(latencies), 1) if latencies else 0
-        avg_ttft = round(sum(ttfts) / len(ttfts), 1) if ttfts else 0
-        error_rate = round(errors / total * 100, 1) if total else 0
-        fallback_rate = round(fallbacks / total * 100, 1) if total else 0
-
-        model_counts = {}
-        for e in entries:
-            m = e.get("routed_model", "unknown")
-            model_counts[m] = model_counts.get(m, 0) + 1
-        model_summary = "\n".join(f"  - {m}: {c} requests" for m, c in sorted(model_counts.items(), key=lambda x: -x[1]))
-
-        rule_counts = {}
-        for e in entries:
-            r = e.get("matched_rule", "unknown")
-            rule_counts[r] = rule_counts.get(r, 0) + 1
-        rule_summary = "\n".join(f"  - {r}: {c}" for r, c in sorted(rule_counts.items(), key=lambda x: -x[1]))
-
-        selected_tier_counts = {}
-        for e in entries:
-            selected_tier = e.get("selected_tier", "unknown")
-            selected_tier_counts[selected_tier] = selected_tier_counts.get(selected_tier, 0) + 1
-        selected_tier_summary = "\n".join(
-            f"  - {tier_name}: {count}" for tier_name, count in sorted(selected_tier_counts.items(), key=lambda x: -x[1])
-        )
-
-        feature_counts = {}
-        for e in entries:
-            for feature in e.get("detected_features", []):
-                feature_counts[feature] = feature_counts.get(feature, 0) + 1
-        feature_summary = "\n".join(
-            f"  - {feature}: {count}" for feature, count in sorted(feature_counts.items(), key=lambda x: -x[1])[:8]
-        )
-
-        # Find outliers
-        high_latency = [e for e in entries if e.get("latency_ms") and e["latency_ms"] > avg_latency * 2]
-        error_entries = [e for e in entries if e.get("status") != 200][:5]
-        fallback_entries = [e for e in entries if e.get("is_fallback")][:5]
-
-        outlier_info = ""
-        if high_latency:
-            outlier_info += f"\nHigh-latency requests ({len(high_latency)}):\n"
-            for e in high_latency[:5]:
-                outlier_info += f"  - {e.get('routed_model')} {e['latency_ms']}ms (rule: {e.get('matched_rule')})\n"
-        if error_entries:
-            outlier_info += f"\nError samples:\n"
-            for e in error_entries:
-                outlier_info += f"  - {e.get('routed_model')} status={e['status']} error={e.get('error', 'N/A')[:100]}\n"
-        if fallback_entries:
-            outlier_info += f"\nFallback samples:\n"
-            for e in fallback_entries:
-                chain = " -> ".join(f["model"] for f in e.get("fallback_chain", []))
-                outlier_info += f"  - {e.get('routed_model')} (chain: {chain})\n"
+        snapshot = _build_analysis_snapshot(entries)
 
         prompt = f"""You are analyzing LLM router logs for the past {request.hours} hours.
 
 ## Summary Statistics
-- Total requests: {total}
+- Total requests: {snapshot['total']}
 - Models used:
-{model_summary}
+{snapshot['model_summary']}
+- Routed tiers:
+{snapshot['routed_tier_summary']}
 - Selected tiers:
-{selected_tier_summary or "  - none"}
+{snapshot['selected_tier_summary']}
+- Task types:
+{snapshot['task_type_summary']}
 - Routing rules:
-{rule_summary}
+{snapshot['rule_summary']}
 - Top detected features:
-{feature_summary or "  - none"}
-- Avg latency: {avg_latency}ms
-- Avg TTFT: {avg_ttft}ms
-- Error rate: {error_rate}%
-- Fallback rate: {fallback_rate}%
-{outlier_info}
+{snapshot['feature_summary']}
+- Log schema versions:
+{snapshot['schema_version_summary']}
+- Explicit passthrough requests: {snapshot['explicit_passthrough_count']}
+- Entries with feature snapshots: {snapshot['feature_snapshot_count']} / {snapshot['total']}
+- Entries with selected tiers: {snapshot['selected_tier_count']} / {snapshot['total']}
+- Observability-only passthrough classifications: {snapshot['observability_only_count']}
+- Avg latency: {snapshot['avg_latency_display']}
+- Avg TTFT: {snapshot['avg_ttft_display']}
+- Error rate: {snapshot['error_rate']}%
+- Fallback rate: {snapshot['fallback_rate']}%
+{snapshot['outlier_info']}
 
 ## Please analyze:
 1. **Routing efficiency** — are requests reaching appropriate models?
@@ -236,6 +271,11 @@ def create_app(config: RouterConfig) -> FastAPI:
 3. **Fallback patterns** — when and why do fallbacks occur?
 4. **Latency outliers** — any unusual delays?
 5. **Recommendations** — what to optimize?
+
+Important constraints:
+- If a field is missing, describe it as missing or legacy rather than "unknown".
+- Do not infer a tier-mapping/configuration bug from missing `selected_tier` alone.
+- TTFT only applies to streaming requests; if there are no streaming samples, treat TTFT as unavailable rather than suspicious.
 
 Be concise and actionable. Use markdown formatting."""
 
@@ -292,9 +332,48 @@ Be concise and actionable. Use markdown formatting."""
             headers={"Cache-Control": "no-cache", "X-Analysis-Model": model_id},
         )
 
-    # Serve built dashboard static files (must be after API routes)
-    dashboard_dir = Path(__file__).parent.parent / "dashboard" / "dist"
-    if dashboard_dir.exists():
-        app.mount("/", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+    # Serve dashboard — dev mode proxies to Vite, prod serves static files
+    dev_mode = os.environ.get("LLM_ROUTER_DEV") == "1"
+    vite_port = int(os.environ.get("VITE_PORT", "5173"))
+
+    if dev_mode:
+        vite_base = f"http://localhost:{vite_port}"
+
+        @app.middleware("http")
+        async def vite_proxy(request: Request, call_next):
+            # Let API routes and other registered routes handle themselves
+            path = request.url.path
+            if path.startswith("/api/") or path.startswith("/v1/") or path in ("/health", "/status", "/reload"):
+                return await call_next(request)
+
+            # Proxy everything else to Vite dev server (bypass system proxy)
+            try:
+                async with httpx.AsyncClient(trust_env=False, timeout=10.0) as client:
+                    url = f"{vite_base}{path}"
+                    if request.url.query:
+                        url += f"?{request.url.query}"
+                    resp = await client.send(
+                        client.build_request(
+                            request.method,
+                            url,
+                            headers={k: v for k, v in request.headers.items() if k.lower() != "host"},
+                            content=await request.body(),
+                        ),
+                    )
+                    return Response(
+                        content=resp.content,
+                        status_code=resp.status_code,
+                        headers=dict(resp.headers),
+                    )
+            except httpx.ConnectError:
+                return JSONResponse(
+                    status_code=502,
+                    content={"error": f"Vite dev server not running on {vite_base}. Start it with: cd dashboard && npm run dev"},
+                )
+    else:
+        # Production: serve built static files
+        dashboard_dir = Path(__file__).parent.parent / "dashboard" / "dist"
+        if dashboard_dir.exists():
+            app.mount("/", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
 
     return app

@@ -16,6 +16,7 @@ class LatencyTracker:
         self.latency_threshold_ms = fallback_config.get("latency_threshold_ms", 30000)
         self.error_threshold = fallback_config.get("error_threshold", 3)
         self.cooldown_seconds = fallback_config.get("cooldown_seconds", 120)
+        self.cooldown_max_seconds = fallback_config.get("cooldown_max_seconds", 600)
 
         # model_id -> deque of (timestamp, latency_ms, success)
         self._records: dict[str, deque] = {}
@@ -25,6 +26,8 @@ class LatencyTracker:
         self._cooldown_until: dict[str, float] = {}
         # model_id -> consecutive error count
         self._consecutive_errors: dict[str, int] = {}
+        # model_id -> exponential backoff multiplier (number of consecutive cooldown cycles)
+        self._backoff_count: dict[str, int] = {}
 
     def record(self, model_id: str, latency_ms: float, success: bool):
         """Record a completed request."""
@@ -36,6 +39,8 @@ class LatencyTracker:
             self._consecutive_errors[model_id] = 0
             # Clear cooldown on success
             self._cooldown_until.pop(model_id, None)
+            # Reset backoff — we found the right cooldown duration
+            self._backoff_count.pop(model_id, None)
         else:
             self._consecutive_errors[model_id] = self._consecutive_errors.get(model_id, 0) + 1
             if self._consecutive_errors[model_id] >= self.error_threshold:
@@ -52,10 +57,13 @@ class LatencyTracker:
         self._ttft_records[model_id].append(ttft_ms)
 
     def mark_unavailable(self, model_id: str):
-        """Explicitly mark a model as unavailable (e.g. after fallback)."""
-        until = time.monotonic() + self.cooldown_seconds
+        """Mark a model as unavailable with exponential backoff."""
+        count = self._backoff_count.get(model_id, 0) + 1
+        self._backoff_count[model_id] = count
+        backoff = min(self.cooldown_seconds * (2 ** (count - 1)), self.cooldown_max_seconds)
+        until = time.monotonic() + backoff
         self._cooldown_until[model_id] = until
-        logger.warning(f"Marked {model_id} unavailable until cooldown ({self.cooldown_seconds}s)")
+        logger.warning(f"Marked {model_id} unavailable (backoff #{count}, {backoff:.0f}s)")
 
     def is_available(self, model_id: str) -> bool:
         """Check if a model is available based on latency and error thresholds."""

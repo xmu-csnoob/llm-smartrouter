@@ -105,6 +105,13 @@ class RequestLogger:
                 "feature_counts": {},
                 "fallback_reasons": {},
                 "avg_tier_scores": {},
+                "schema_versions": {},
+                "task_types": {},
+                "passthrough_requests": 0,
+                "streaming_requests": 0,
+                "feature_snapshot_count": 0,
+                "selected_tier_count": 0,
+                "observability_only_count": 0,
             }
 
         total = len(entries)
@@ -121,6 +128,13 @@ class RequestLogger:
         feature_counts = {}
         fallback_reasons = {}
         tier_score_totals = {}
+        schema_versions = {}
+        task_types = {}
+        passthrough_requests = 0
+        streaming_requests = 0
+        feature_snapshot_count = 0
+        selected_tier_count = 0
+        observability_only_count = 0
         for e in entries:
             m = e.get("routed_model", "unknown")
             if m not in models:
@@ -133,6 +147,17 @@ class RequestLogger:
             if e.get("ttft_ms") is not None:
                 models[m]["total_ttft"] += e["ttft_ms"]
                 models[m]["ttft_samples"] += 1
+
+            if e.get("matched_by") == "passthrough":
+                passthrough_requests += 1
+            if e.get("is_stream"):
+                streaming_requests += 1
+            if e.get("feature_values"):
+                feature_snapshot_count += 1
+            if e.get("selected_tier"):
+                selected_tier_count += 1
+            if e.get("observability_only"):
+                observability_only_count += 1
 
             selected_tier = e.get("selected_tier")
             if selected_tier:
@@ -149,6 +174,13 @@ class RequestLogger:
             matched_rule = e.get("matched_rule")
             if matched_rule:
                 matched_rules[matched_rule] = matched_rules.get(matched_rule, 0) + 1
+
+            schema_version = str(e.get("log_schema_version", "legacy"))
+            schema_versions[schema_version] = schema_versions.get(schema_version, 0) + 1
+
+            task_type = e.get("task_type")
+            if task_type:
+                task_types[task_type] = task_types.get(task_type, 0) + 1
 
             for feature in e.get("detected_features", []):
                 feature_counts[feature] = feature_counts.get(feature, 0) + 1
@@ -188,6 +220,13 @@ class RequestLogger:
             "feature_counts": feature_counts,
             "fallback_reasons": fallback_reasons,
             "avg_tier_scores": avg_tier_scores,
+            "schema_versions": schema_versions,
+            "task_types": task_types,
+            "passthrough_requests": passthrough_requests,
+            "streaming_requests": streaming_requests,
+            "feature_snapshot_count": feature_snapshot_count,
+            "selected_tier_count": selected_tier_count,
+            "observability_only_count": observability_only_count,
         }
 
     async def _flush_loop(self):

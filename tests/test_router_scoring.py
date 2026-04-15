@@ -5,6 +5,7 @@ from pathlib import Path
 
 from llm_router.config import RouterConfig
 from llm_router.latency import LatencyTracker
+from llm_router.main import _build_analysis_snapshot
 from llm_router.router import Router
 
 
@@ -127,6 +128,59 @@ class RouterScoringTests(unittest.TestCase):
         self.assertEqual(route_info["selected_tier"], "tier2")
         self.assertEqual(model_id, "tier2-fast")
         self.assertEqual(route_info["model_selection"]["selected_model"], "tier2-fast")
+
+    def test_explicit_model_passthrough_still_extracts_observability_features(self):
+        router, _tracker = make_router()
+        model_id, _provider, route_info = router.route({
+            "model": "tier1-model",
+            "messages": [{
+                "role": "user",
+                "content": "Write a README for this FastAPI project with install, usage, and API reference sections.",
+            }],
+        })
+
+        self.assertEqual(model_id, "tier1-model")
+        self.assertEqual(route_info["matched_by"], "passthrough")
+        self.assertEqual(route_info["requested_model_tier"], "tier1")
+        self.assertEqual(route_info["selected_tier"], "tier2")
+        self.assertEqual(route_info["task_type"], "generation")
+        self.assertTrue(route_info["feature_values"])
+        self.assertIn("generation_heavy", route_info["detected_features"])
+        self.assertTrue(route_info["observability_only"])
+
+    def test_analysis_snapshot_treats_missing_fields_as_missing_not_unknown(self):
+        snapshot = _build_analysis_snapshot([
+            {
+                "matched_by": "passthrough",
+                "matched_rule": "explicit-model",
+                "routed_model": "tier1-model",
+                "routed_tier": "tier1",
+                "latency_ms": 1200,
+                "is_stream": False,
+                "status": 200,
+            },
+            {
+                "log_schema_version": 2,
+                "matched_by": "scoring",
+                "matched_rule": "scoring:generation",
+                "selected_tier": "tier2",
+                "routed_model": "tier2-model",
+                "routed_tier": "tier2",
+                "task_type": "generation",
+                "detected_features": ["generation_heavy"],
+                "feature_values": {"estimated_tokens": 1200},
+                "latency_ms": 800,
+                "is_stream": False,
+                "status": 200,
+            },
+        ])
+
+        self.assertEqual(snapshot["selected_tier_count"], 1)
+        self.assertEqual(snapshot["missing_selected_tier_count"], 1)
+        self.assertEqual(snapshot["feature_snapshot_count"], 1)
+        self.assertEqual(snapshot["missing_feature_snapshot_count"], 1)
+        self.assertEqual(snapshot["avg_ttft_display"], "N/A (no streaming samples)")
+        self.assertNotIn("unknown", snapshot["selected_tier_summary"])
 
 
 if __name__ == "__main__":
