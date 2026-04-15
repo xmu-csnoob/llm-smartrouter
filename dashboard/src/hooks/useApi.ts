@@ -48,8 +48,10 @@ export interface Stats {
   models: Record<string, ModelStats>;
 }
 
-export async function fetchRecent(offset = 0, limit = 50): Promise<RecentResponse> {
-  const res = await fetch(`${API_BASE}/logs/recent?offset=${offset}&limit=${limit}`);
+export async function fetchRecent(offset = 0, limit = 50, model?: string | null): Promise<RecentResponse> {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+  if (model) params.set('model', model);
+  const res = await fetch(`${API_BASE}/logs/recent?${params}`);
   return res.json();
 }
 
@@ -60,12 +62,13 @@ export async function fetchStats(hours = 24): Promise<Stats> {
 
 export async function analyzeLogs(
   hours: number,
+  lang: string,
   onChunk: (text: string) => void,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/logs/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hours }),
+    body: JSON.stringify({ hours, lang }),
   });
 
   if (!res.ok) {

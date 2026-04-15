@@ -177,8 +177,8 @@ def create_app(config: RouterConfig) -> FastAPI:
             return JSONResponse(status_code=500, content={"error": str(e)})
 
     @app.get("/api/logs/recent")
-    async def recent_logs(offset: int = 0, limit: int = 50):
-        return req_logger.get_recent(offset, limit)
+    async def recent_logs(offset: int = 0, limit: int = 50, model: str | None = None):
+        return req_logger.get_recent(offset, limit, model=model)
 
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
@@ -205,6 +205,7 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     class AnalyzeRequest(BaseModel):
         hours: int = 24
+        lang: str = "en"
 
     def _pick_analysis_model() -> tuple[str, dict, str] | None:
         """Pick the cheapest available model for analysis. Returns (model_id, provider_cfg, tier) or None."""
@@ -265,19 +266,19 @@ def create_app(config: RouterConfig) -> FastAPI:
 - Fallback rate: {snapshot['fallback_rate']}%
 {snapshot['outlier_info']}
 
-## Please analyze:
-1. **Routing efficiency** — are requests reaching appropriate models?
-2. **Tier classification quality** — are the selected tiers reasonable?
-3. **Fallback patterns** — when and why do fallbacks occur?
-4. **Latency outliers** — any unusual delays?
-5. **Recommendations** — what to optimize?
+{"请用中文回答。" if request.lang == "zh" else ""}{"## 请分析以下内容" if request.lang == "zh" else "## Please analyze"}:
+1. **{"路由效率" if request.lang == "zh" else "Routing efficiency"}** — {"请求是否被路由到了合适的模型？" if request.lang == "zh" else "are requests reaching appropriate models?"}
+2. **{"层级分类质量" if request.lang == "zh" else "Tier classification quality"}** — {"所选层级是否合理？" if request.lang == "zh" else "are the selected tiers reasonable?"}
+3. **{"降级模式" if request.lang == "zh" else "Fallback patterns"}** — {"何时以及为何发生降级？" if request.lang == "zh" else "when and why do fallbacks occur?"}
+4. **{"延迟异常" if request.lang == "zh" else "Latency outliers"}** — {"是否有异常延迟？" if request.lang == "zh" else "any unusual delays?"}
+5. **{"优化建议" if request.lang == "zh" else "Recommendations"}** — {"哪些方面可以优化？" if request.lang == "zh" else "what to optimize?"}
 
-Important constraints:
-- If a field is missing, describe it as missing or legacy rather than "unknown".
-- Do not infer a tier-mapping/configuration bug from missing `selected_tier` alone.
-- TTFT only applies to streaming requests; if there are no streaming samples, treat TTFT as unavailable rather than suspicious.
+{"重要约束" if request.lang == "zh" else "Important constraints"}:
+- {"如果某个字段缺失，将其描述为缺失或遗留字段，而不是\"未知\"" if request.lang == "zh" else 'If a field is missing, describe it as missing or legacy rather than "unknown".'}
+- {"不要仅从缺失的 selected_tier 推断出层级映射/配置错误。" if request.lang == "zh" else "Do not infer a tier-mapping/configuration bug from missing `selected_tier` alone."}
+- {"TTFT 仅适用于流式请求；如果没有流式请求样本，请将 TTFT 视为不可用而非可疑。" if request.lang == "zh" else "TTFT only applies to streaming requests; if there are no streaming samples, treat TTFT as unavailable rather than suspicious."}
 
-Be concise and actionable. Use markdown formatting."""
+{"简洁、可操作，使用 Markdown 格式。" if request.lang == "zh" else "Be concise and actionable. Use markdown formatting."}"""
 
         # Call the LLM with streaming
         url = provider_cfg["base_url"].rstrip("/") + "/v1/messages"

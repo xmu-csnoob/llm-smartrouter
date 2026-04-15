@@ -52,7 +52,7 @@ class RequestLogger:
             return
         self._queue.put_nowait(entry)
 
-    def get_recent(self, offset: int = 0, limit: int = 50) -> dict:
+    def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None) -> dict:
         """Read paginated entries from log files.
 
         Returns:
@@ -66,6 +66,9 @@ class RequestLogger:
 
         all_entries = self._read_all_entries()
         all_entries.sort(key=lambda entry: entry.get("timestamp", ""), reverse=True)
+
+        if model:
+            all_entries = [e for e in all_entries if e.get("routed_model") == model]
 
         total = len(all_entries)
         entries = all_entries[offset:offset + limit]
