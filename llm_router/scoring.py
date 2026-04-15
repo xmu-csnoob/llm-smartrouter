@@ -22,8 +22,8 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
     "enabled": True,
     "legacy_rule_bonus": 0.5,
     "tiers": {
-        "tier1": {"threshold": 4.5},
-        "tier2": {"threshold": 3.0},
+        "tier1": {"threshold": 5.5},
+        "tier2": {"threshold": 2.5},
     },
     "features": {
         "large_context": {
@@ -49,207 +49,33 @@ DEFAULT_SCORING_CONFIG: dict[str, Any] = {
         "error_investigation": {
             "enabled": True,
             "thresholds": {"stacktrace_count": 1, "error_signal_count": 2},
+            "weights": {"tier1": 2.0, "tier2": 1.5},
+        },
+        "substantial_prompt": {
+            "enabled": True,
+            "thresholds": {"input_chars": 20},
+            "weights": {"tier2": 2.0},
+        },
+        "exploratory_request": {
+            "enabled": True,
+            "thresholds": {"question_count": 2, "tool_count": 1},
+            "weights": {"tier2": 1.5, "tier1": 0.5},
+        },
+        "deep_context": {
+            "enabled": True,
+            "thresholds": {"complexity_signal_count": 4},
             "weights": {"tier1": 2.5, "tier2": 1.5},
         },
-        "architecture_design": {
+        "large_output_budget": {
             "enabled": True,
-            "thresholds": {"architecture_signal_count": 1},
-            "weights": {"tier1": 4.5, "tier2": 1.0},
-        },
-        "debugging": {
-            "enabled": True,
-            "thresholds": {"debug_signal_count": 1},
-            "weights": {"tier1": 3.5, "tier2": 1.0},
-        },
-        "migration_work": {
-            "enabled": True,
-            "thresholds": {"migration_signal_count": 1},
-            "weights": {"tier1": 3.5, "tier2": 1.0},
-        },
-        "performance_work": {
-            "enabled": True,
-            "thresholds": {"performance_signal_count": 1},
-            "weights": {"tier1": 3.5, "tier2": 1.0},
-        },
-        "implementation": {
-            "enabled": True,
-            "thresholds": {"implementation_signal_count": 1},
-            "weights": {"tier2": 3.0, "tier1": 0.5},
-        },
-        "generation_heavy": {
-            "enabled": True,
-            "thresholds": {"generation_signal_count": 1},
-            "weights": {"tier2": 3.0},
-        },
-        "constraint_heavy": {
-            "enabled": True,
-            "thresholds": {"constraint_signal_count": 2},
-            "weights": {"tier2": 1.5, "tier1": 1.0},
-        },
-        "comparison_reasoning": {
-            "enabled": True,
-            "thresholds": {"comparison_signal_count": 1, "reasoning_signal_count": 2},
-            "weights": {"tier1": 2.0, "tier2": 1.5},
+            "thresholds": {"max_tokens_requested": 2048},
+            "weights": {"tier2": 2.0, "tier1": 0.5},
         },
         "simple_prompt": {
             "enabled": True,
-            "thresholds": {"estimated_tokens_max": 600, "message_count_max": 3},
+            "thresholds": {"estimated_tokens_max": 600, "message_count_max": 3, "input_chars_max": 18},
             "weights": {"tier3": 2.0},
         },
-    },
-    "keywords": {
-        "architecture": [
-            "architect",
-            "architecture",
-            "design",
-            "redesign",
-            "tradeoff",
-            "system design",
-            "架构",
-            "设计",
-            "方案",
-            "权衡",
-        ],
-        "debug": [
-            "debug",
-            "bug",
-            "fix bug",
-            "root cause",
-            "investigate",
-            "troubleshoot",
-            "报错",
-            "错误",
-            "异常",
-            "调试",
-            "修复",
-            "排查",
-            "定位",
-            "根因",
-        ],
-        "migration": [
-            "migrate",
-            "migration",
-            "upgrade",
-            "rewrite",
-            "refactor",
-            "重构",
-            "迁移",
-            "升级",
-            "重写",
-            "改造",
-        ],
-        "performance": [
-            "performance",
-            "latency",
-            "optimize",
-            "memory leak",
-            "race condition",
-            "deadlock",
-            "slow",
-            "性能",
-            "延迟",
-            "优化",
-            "内存泄漏",
-            "竞态",
-            "死锁",
-        ],
-        "reasoning": [
-            "analyze",
-            "analysis",
-            "compare",
-            "reason",
-            "why",
-            "plan",
-            "tradeoff",
-            "分析",
-            "比较",
-            "原因",
-            "为什么",
-            "推导",
-            "规划",
-        ],
-        "implementation": [
-            "implement",
-            "build",
-            "create",
-            "add",
-            "feature",
-            "write code",
-            "write a",
-            "write an",
-            "endpoint",
-            "function",
-            "module",
-            "service",
-            "class",
-            "method",
-            "handler",
-            "实现",
-            "开发",
-            "新增",
-            "写代码",
-            "改一下",
-            "修改",
-            "编写",
-        ],
-        "generation": [
-            "readme",
-            "documentation",
-            "document",
-            "spec",
-            "report",
-            "summary",
-            "summarize",
-            "polish",
-            "rewrite",
-            "readme.md",
-            "workflow",
-            "pagination",
-            "middleware",
-            "validation",
-            "hashing",
-            "serialization",
-            "rate limiter",
-            "ci/cd",
-            "github actions",
-            "rest api",
-            "数据类",
-            "文档",
-            "说明",
-            "总结",
-            "摘要",
-            "润色",
-            "改写",
-            "报告",
-            "分页",
-            "限流",
-            "工作流",
-        ],
-        "constraint": [
-            "must",
-            "should",
-            "without",
-            "compatible",
-            "ensure",
-            "safely",
-            "必须",
-            "不要",
-            "不能",
-            "兼容",
-            "保证",
-            "确保",
-            "同时",
-        ],
-        "comparison": [
-            "compare",
-            "vs",
-            "versus",
-            "pros and cons",
-            "tradeoff",
-            "对比",
-            "比较",
-            "权衡",
-        ],
     },
 }
 
@@ -322,7 +148,6 @@ class RequestScorer:
     ):
         self.config = scoring_config
         self.tier_order = tier_order
-        self.keywords = scoring_config.get("keywords", {})
         self.ml_model = ml_model
         # ML weights: probability multiplier for each tier (default 2.0)
         self.ml_weights = ml_weights or {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0}
@@ -342,13 +167,25 @@ class RequestScorer:
         system_text = extract_text_from_system(request_body.get("system"))
         message_text = extract_text_from_messages(messages)
         combined_text = " ".join(part for part in [system_text, message_text] if part)
-        text_lower = combined_text.lower()
-
         code_marker_count = len(_CODE_BLOCK_PATTERN.findall(combined_text))
         code_block_count = code_marker_count // 2 or (1 if code_marker_count else 0)
         file_path_count = len(_FILE_PATH_PATTERN.findall(combined_text))
         stacktrace_count = len(_STACKTRACE_PATTERN.findall(combined_text))
         question_count = combined_text.count("?") + combined_text.count("？")
+        max_tokens_requested = int(request_body.get("max_tokens") or 0)
+        complexity_signal_count = sum(
+            (
+                1 if code_block_count > 0 else 0,
+                1 if file_path_count > 0 else 0,
+                1 if stacktrace_count > 0 else 0,
+                1 if question_count >= 2 else 0,
+                1 if len(messages) >= 4 else 0,
+                1 if estimate_tokens(combined_text) >= 800 else 0,
+                1 if max_tokens_requested >= 2048 else 0,
+                1 if (request_body.get("tools") or []) else 0,
+            )
+        )
+        error_signal_count = stacktrace_count + (1 if code_block_count and file_path_count else 0)
 
         feature_values = {
             "input_chars": len(combined_text),
@@ -361,19 +198,10 @@ class RequestScorer:
             "code_block_count": code_block_count,
             "file_path_count": file_path_count,
             "stacktrace_count": stacktrace_count,
-            "architecture_signal_count": self._count_hits(text_lower, self.keywords.get("architecture", [])),
-            "debug_signal_count": self._count_hits(text_lower, self.keywords.get("debug", [])),
-            "migration_signal_count": self._count_hits(text_lower, self.keywords.get("migration", [])),
-            "performance_signal_count": self._count_hits(text_lower, self.keywords.get("performance", [])),
-            "reasoning_signal_count": self._count_hits(text_lower, self.keywords.get("reasoning", [])),
-            "implementation_signal_count": self._count_hits(text_lower, self.keywords.get("implementation", [])),
-            "generation_signal_count": self._count_hits(text_lower, self.keywords.get("generation", [])),
-            "constraint_signal_count": self._count_hits(text_lower, self.keywords.get("constraint", [])),
-            "comparison_signal_count": self._count_hits(text_lower, self.keywords.get("comparison", [])),
+            "max_tokens_requested": max_tokens_requested,
+            "complexity_signal_count": complexity_signal_count,
         }
-        feature_values["error_signal_count"] = (
-            feature_values["debug_signal_count"] + feature_values["performance_signal_count"] + stacktrace_count
-        )
+        feature_values["error_signal_count"] = error_signal_count
         feature_values["request_shape"] = {
             "input_chars": feature_values["input_chars"],
             "estimated_tokens": feature_values["estimated_tokens"],
@@ -383,6 +211,7 @@ class RequestScorer:
             "code_block_count": code_block_count,
             "file_path_count": file_path_count,
             "stacktrace_count": stacktrace_count,
+            "max_tokens_requested": max_tokens_requested,
         }
         feature_values["task_type"] = self._classify_task_type(feature_values)
         feature_values["request_text"] = combined_text  # Add for ML model
@@ -483,30 +312,26 @@ class RequestScorer:
     ) -> tuple[bool, str]:
         token_limit = thresholds.get("estimated_tokens_max", 600)
         message_limit = thresholds.get("message_count_max", 3)
+        char_limit = thresholds.get("input_chars_max", 18)
         is_short = (
             feature_values.get("estimated_tokens", 0) <= token_limit
             and feature_values.get("message_count", 0) <= message_limit
+            and feature_values.get("input_chars", 0) <= char_limit
         )
         complex_signal_count = sum(
             feature_values.get(name, 0)
             for name in (
-                "architecture_signal_count",
-                "debug_signal_count",
-                "migration_signal_count",
-                "performance_signal_count",
-                "comparison_signal_count",
-                "implementation_signal_count",
-                "generation_signal_count",
-                "reasoning_signal_count",
-                "constraint_signal_count",
+                "complexity_signal_count",
                 "stacktrace_count",
                 "code_block_count",
                 "file_path_count",
+                "tool_count",
             )
         )
         active = is_short and complex_signal_count == 0
         reason = (
             f"estimated_tokens<={token_limit}, message_count<={message_limit}, "
+            f"input_chars<={char_limit}, "
             f"complex_signal_count={complex_signal_count}"
         )
         return active, reason
@@ -521,6 +346,22 @@ class RequestScorer:
                 continue
             if tier_scores.get(tier, 0.0) >= float(threshold):
                 return tier
+
+        # When nothing crosses a hard threshold, prefer the non-lowest tier
+        # whose score is closest to its threshold. This avoids routing
+        # "medium-hard" requests straight down to tier3.
+        ratio_candidates: list[tuple[float, float, str]] = []
+        for tier in self.tier_order[:-1]:
+            threshold = thresholds.get(tier, {}).get("threshold")
+            score = tier_scores.get(tier, 0.0)
+            if threshold is None or score <= 0:
+                continue
+            ratio_candidates.append((score / float(threshold), score, tier))
+
+        if ratio_candidates:
+            best_ratio, _best_score, best_tier = max(ratio_candidates)
+            if best_ratio >= 0.75:
+                return best_tier
 
         positive_candidates = [tier for tier, score in tier_scores.items() if score > 0]
         if not positive_candidates:
@@ -540,24 +381,17 @@ class RequestScorer:
         return lowest_tier
 
     def _classify_task_type(self, feature_values: dict[str, Any]) -> str:
-        task_scores = {
-            "architecture": feature_values.get("architecture_signal_count", 0),
-            "debug": feature_values.get("debug_signal_count", 0) + feature_values.get("stacktrace_count", 0),
-            "migration": feature_values.get("migration_signal_count", 0),
-            "performance": feature_values.get("performance_signal_count", 0),
-            "implementation": feature_values.get("implementation_signal_count", 0),
-            "generation": feature_values.get("generation_signal_count", 0),
-        }
-        task_type, score = max(task_scores.items(), key=lambda item: item[1])
-        if score > 0:
-            return task_type
+        if feature_values.get("stacktrace_count", 0) > 0:
+            return "debug"
+        if feature_values.get("code_block_count", 0) > 0 or feature_values.get("file_path_count", 0) > 0:
+            return "implementation"
+        if feature_values.get("message_count", 0) >= 8 or feature_values.get("complexity_signal_count", 0) >= 4:
+            return "architecture"
+        if feature_values.get("input_chars", 0) >= 40 or feature_values.get("tool_count", 0) > 0:
+            return "analysis"
         if feature_values.get("estimated_tokens", 0) <= 600 and feature_values.get("message_count", 0) <= 3:
             return "simple"
         return "general"
-
-    @staticmethod
-    def _count_hits(text: str, keywords: list[str]) -> int:
-        return sum(1 for keyword in keywords if keyword and keyword.lower() in text)
 
     async def get_ml_prediction(self, text: str, timeout_ms: int = 50) -> dict[str, float] | None:
         """Get ML model prediction for request complexity.
