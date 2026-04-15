@@ -69,56 +69,51 @@ function App() {
   }
 
   return (
-    <>
-      <div className="scanlines" />
-      <div className="min-h-screen p-4 md:p-6">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            {selectedModel && (
-              <button
-                onClick={handleBack}
-                className="btn-terminal text-muted-foreground hover:text-foreground"
-              >
-                ← {t('app.overview')}
-              </button>
-            )}
-            <div className="flex items-center gap-3">
-              <div className="status-dot online pulse-live" />
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-                {selectedModel ? (
-                  <span className="font-mono text-lg">{selectedModel}</span>
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">LLM Router</span>{' '}
-                    <span className="text-primary">Dashboard</span>
-                  </>
-                )}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen p-4 md:p-6">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          {selectedModel && (
             <button
-              onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-              className="btn-terminal min-w-[60px]"
+              onClick={handleBack}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              {locale === 'en' ? '中文' : 'EN'}
+              ← {t('app.overview')}
             </button>
-          </div>
-        </header>
+          )}
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
+            {selectedModel ? (
+              <span className="font-mono">{selectedModel}</span>
+            ) : (
+              t('app.title')
+            )}
+          </h1>
+        </div>
+        <button
+          onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+          className="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-secondary transition-colors"
+        >
+          {locale === 'en' ? '中文' : 'EN'}
+        </button>
+      </header>
 
-        {selectedModel ? (
-          // Model Detail View
-          <div className="space-y-4">
-            <StatsCards stats={stats} modelStats={selectedModelStats} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="hud-card rounded-lg p-4">
-                <h3 className="label-text mb-4">Latency Trend</h3>
-                <LatencyChart entries={entries} />
-              </div>
+      {selectedModel ? (
+        // Model Detail View
+        <div className="space-y-[18px]">
+          <StatsCards stats={stats} modelStats={selectedModelStats} />
+          <div className="gs-panel">
+            <div className="gs-panel-header">
+              <span className="gs-eyebrow">{t('app.recentRequests')}</span>
             </div>
-            <div className="hud-card rounded-lg p-4">
-              <h3 className="label-text mb-3">{t('app.recentRequests')}</h3>
+            <div className="gs-panel-body">
+              <LatencyChart entries={entries} />
+            </div>
+          </div>
+          <div className="gs-panel">
+            <div className="gs-panel-header">
+              <span className="gs-eyebrow">{t('app.recentRequests')}</span>
+            </div>
+            <div className="gs-panel-body">
               <RequestTable
                 entries={entries}
                 total={totalEntries}
@@ -128,25 +123,34 @@ function App() {
               />
             </div>
           </div>
-        ) : (
-          // Overview
-          <div className="space-y-4">
-            <StatsCards stats={stats} />
+        </div>
+      ) : (
+        // Overview
+        <div className="space-y-[18px]">
+          <StatsCards stats={stats} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="hud-card rounded-lg p-4 lg:col-span-1">
-                <h3 className="label-text mb-4">Model Distribution</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-[18px]">
+            <div className="gs-panel">
+              <div className="gs-panel-header">
+                <span className="gs-eyebrow">Model Distribution</span>
+              </div>
+              <div className="gs-panel-body">
                 <ModelChart stats={stats} onSliceClick={handleModelSelect} />
               </div>
+            </div>
 
-              <div className="hud-card rounded-lg p-4 lg:col-span-2">
+            <div className="gs-panel lg:col-span-2">
+              <div className="gs-panel-header">
+                <span className="gs-eyebrow">{t('analysis.title')}</span>
+              </div>
+              <div className="gs-panel-body">
                 <AnalysisPanel />
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   )
 }
 
