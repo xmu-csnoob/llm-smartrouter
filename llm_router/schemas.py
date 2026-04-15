@@ -51,6 +51,7 @@ class ModelInfo(BaseModel):
     tier: str
     available: bool
     avg_latency_ms: float | None = None
+    avg_ttft_ms: float | None = None
     consecutive_errors: int = 0
 
 

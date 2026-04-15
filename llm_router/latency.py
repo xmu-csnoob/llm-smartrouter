@@ -19,6 +19,8 @@ class LatencyTracker:
 
         # model_id -> deque of (timestamp, latency_ms, success)
         self._records: dict[str, deque] = {}
+        # model_id -> deque of ttft_ms
+        self._ttft_records: dict[str, deque] = {}
         # model_id -> timestamp when marked unavailable
         self._cooldown_until: dict[str, float] = {}
         # model_id -> consecutive error count
@@ -42,6 +44,12 @@ class LatencyTracker:
         status = "ok" if success else "error"
         logger.debug(f"Recorded {model_id}: {latency_ms:.0f}ms ({status}), "
                      f"consecutive_errors={self._consecutive_errors.get(model_id, 0)}")
+
+    def record_ttft(self, model_id: str, ttft_ms: float):
+        """Record time-to-first-token for streaming requests."""
+        if model_id not in self._ttft_records:
+            self._ttft_records[model_id] = deque(maxlen=_WINDOW_SIZE)
+        self._ttft_records[model_id].append(ttft_ms)
 
     def mark_unavailable(self, model_id: str):
         """Explicitly mark a model as unavailable (e.g. after fallback)."""
@@ -85,6 +93,14 @@ class LatencyTracker:
         recent = list(records)[-5:]
         return sum(r[1] for r in recent) / len(recent)
 
+    def get_avg_ttft(self, model_id: str) -> float | None:
+        """Get average TTFT for a model."""
+        records = self._ttft_records.get(model_id)
+        if not records:
+            return None
+        recent = list(records)[-5:]
+        return sum(recent) / len(recent)
+
     def get_consecutive_errors(self, model_id: str) -> int:
         """Get consecutive error count for a model."""
         return self._consecutive_errors.get(model_id, 0)
@@ -95,10 +111,12 @@ class LatencyTracker:
         for model_id, records in self._records.items():
             recent = list(records)
             avg_lat = sum(r[1] for r in recent) / len(recent) if recent else None
+            avg_ttft = self.get_avg_ttft(model_id)
             stats.append({
                 "model_id": model_id,
                 "available": self.is_available(model_id),
                 "avg_latency_ms": round(avg_lat, 1) if avg_lat else None,
+                "avg_ttft_ms": round(avg_ttft, 1) if avg_ttft is not None else None,
                 "consecutive_errors": self._consecutive_errors.get(model_id, 0),
                 "total_requests": len(recent),
             })

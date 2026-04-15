@@ -4,7 +4,7 @@ A lightweight multi-model routing proxy with intelligent request classification,
 
 ## Features
 
-- **Rule-based routing** — classify requests by token estimation, keyword matching, or expression evaluation, then route to the appropriate model tier
+- **Feature-based tier scoring** — classify requests by context size, code/error signals, task intent, and legacy rule bonuses, then map the request to the right tier
 - **Automatic fallback** — same-tier and cross-tier degradation with configurable cooldown and error thresholds
 - **Streaming support** — full SSE passthrough with Time-To-First-Token (TTFT) tracking
 - **Zero-overhead logging** — async queue with background batch flush to daily JSONL files; no impact on request latency
@@ -20,7 +20,7 @@ Client (Claude Code / curl / SDK)
 ┌───────────────────┐
 │   FastAPI Proxy   │  POST /v1/messages
 │                   │
-│  Router ──────────┤  Rule evaluation → tier selection
+│  Router ──────────┤  Feature scoring → tier selection
 │  LatencyTracker ──┤  Sliding window health tracking
 │  RequestLogger ───┤  Async queue → JSONL
 │  StreamProxy ─────┤  SSE forwarding + fallback
@@ -62,6 +62,9 @@ models:
       provider: glm
 
 rules:
+  - name: "explicit-model"
+    match: "model_is_known"
+    action: "passthrough"
   - name: "complex-request"
     match: "estimated_tokens > 4000 or message_count > 20"
     target: tier1
@@ -70,6 +73,14 @@ rules:
     target: tier1
   - name: "default"
     target: tier3
+
+scoring:
+  enabled: true
+  tiers:
+    tier1:
+      threshold: 6.0
+    tier2:
+      threshold: 3.0
 
 fallback:
   latency_threshold_ms: 30000
@@ -137,14 +148,25 @@ models:
 
 ### Rules
 
-Rules are evaluated in order. The first match wins.
+Rules are still supported, but when scoring is enabled they act as bonus signals rather than the only decision source.
 
 | Rule Type | Key | Description |
 |-----------|-----|-------------|
 | Explicit model | `match: "model_is_known"` | Passes through when the requested model ID matches a known model |
-| Expression | `match: "<expr>"` | Python expression evaluated with `estimated_tokens` and `message_count` |
-| Keyword | `keywords: [...]` | Matches if any keyword appears in the last user message |
-| Default | `name: "default"` | Catch-all fallback rule |
+| Expression | `match: "<expr>"` | Legacy signal evaluated with `estimated_tokens` and `message_count` |
+| Keyword | `keywords: [...]` | Legacy signal that boosts the target tier when a keyword matches |
+| Default | `name: "default"` | Catch-all fallback when scoring is disabled |
+
+### Scoring
+
+Scoring extracts a structured feature snapshot from the request, then computes per-tier scores:
+
+- Context size: `estimated_tokens`, `message_count`
+- Code and debugging hints: code blocks, file paths, stack traces, error keywords
+- Task intent: implementation, architecture, migration, performance, documentation
+- Legacy rule bonus: existing rule matches can still boost a tier instead of hard-overriding everything
+
+Use `scoring.tiers.<tier>.threshold` to control promotion into higher tiers, and `scoring.features.<feature>.weights` to tune how strongly each signal affects each tier.
 
 ### Fallback
 
@@ -178,12 +200,15 @@ Logs are written to `logs/requests-YYYY-MM-DD.jsonl` with daily rotation. Each e
   "request_id": "uuid",
   "timestamp": "2026-04-15T00:45:11+00:00",
   "requested_model": "auto",
+  "selected_tier": "tier2",
   "estimated_tokens": 3500,
   "message_count": 12,
-  "matched_rule": "keyword-match",
-  "matched_by": "keyword",
-  "routed_model": "glm-5.1",
-  "routed_tier": "tier1",
+  "matched_rule": "scoring:generation",
+  "matched_by": "scoring",
+  "tier_scores": {"tier1": 1.0, "tier2": 5.0, "tier3": 0.0},
+  "detected_features": ["medium_context", "generation_heavy"],
+  "routed_model": "glm-5",
+  "routed_tier": "tier2",
   "routed_provider": "glm",
   "is_fallback": false,
   "fallback_chain": [],
@@ -210,8 +235,9 @@ Logs are written to `logs/requests-YYYY-MM-DD.jsonl` with daily rotation. Each e
 |--------|------|-------------|
 | `GET` | `/health` | Health check (`{"status": "ok"}`) |
 | `GET` | `/status` | Model availability, latency stats, error counts |
-| `GET` | `/api/logs/recent?limit=50` | Recent request log entries |
-| `GET` | `/api/logs/stats?hours=24` | Aggregated statistics (totals, per-model breakdown) |
+| `GET` | `/api/logs/recent?offset=0&limit=50` | Recent request log entries |
+| `GET` | `/api/logs/stats?hours=24` | Aggregated statistics, tier distribution, and feature counts |
+| `GET` | `/api/logs/replay?hours=24&limit=100` | Re-score logged feature snapshots with the current weights |
 
 ### Management
 

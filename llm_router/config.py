@@ -6,6 +6,8 @@ from pathlib import Path
 
 import yaml
 
+from .scoring import merge_scoring_config
+
 
 _ENV_PATTERN = re.compile(r"\$\{([^}]+)\}")
 
@@ -51,6 +53,7 @@ class RouterConfig:
         self.model_registry: dict[str, dict] = {}  # model_id -> {provider, tier}
         self.rules: list[dict] = []
         self.fallback: dict = {}
+        self.scoring: dict = {}
         self.server: dict = {}
         self.load()
 
@@ -79,6 +82,7 @@ class RouterConfig:
 
         self.rules = self._raw.get("rules", [])
         self.fallback = self._raw.get("fallback", {})
+        self.scoring = merge_scoring_config(self._raw.get("scoring"))
         self.server = self._raw.get("server", {})
 
     @property
@@ -92,6 +96,14 @@ class RouterConfig:
             "flush_batch_size": cfg.get("flush_batch_size", 50),
             "retention_days": cfg.get("retention_days", 30),
         }
+
+    @property
+    def tier_order(self) -> list[str]:
+        """Return tiers ordered from strongest to weakest."""
+        degradation_order = self.fallback.get("degradation_order", [])
+        if degradation_order:
+            return degradation_order
+        return list(self.models.keys())
 
     def get_provider(self, provider_name: str) -> dict:
         """Get provider config by name."""

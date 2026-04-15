@@ -21,6 +21,8 @@ models:
       provider: glm
 
 # ===== Routing Rules =====
+# When scoring is enabled, matching rules act as bonus signals instead of the
+# only decision source. Keep only high-signal rules here.
 rules:
   - name: "explicit-model"
     match: "model_is_known"
@@ -40,6 +42,66 @@ rules:
 
   - name: "default"
     target: tier3
+
+# ===== Request Scoring =====
+scoring:
+  enabled: true
+  legacy_rule_bonus: 2.0
+  tiers:
+    tier1:
+      threshold: 6.0
+    tier2:
+      threshold: 3.0
+  features:
+    large_context:
+      enabled: true
+      thresholds:
+        estimated_tokens: 4000
+        message_count: 20
+      weights:
+        tier1: 4.0
+        tier2: 1.5
+    medium_context:
+      enabled: true
+      thresholds:
+        estimated_tokens: 2000
+        message_count: 10
+      weights:
+        tier2: 3.0
+        tier1: 1.0
+    architecture_design:
+      enabled: true
+      thresholds:
+        architecture_signal_count: 1
+      weights:
+        tier1: 4.5
+        tier2: 1.0
+    debugging:
+      enabled: true
+      thresholds:
+        debug_signal_count: 1
+      weights:
+        tier1: 3.5
+        tier2: 1.0
+    implementation:
+      enabled: true
+      thresholds:
+        implementation_signal_count: 1
+      weights:
+        tier2: 3.0
+    generation_heavy:
+      enabled: true
+      thresholds:
+        generation_signal_count: 1
+      weights:
+        tier2: 3.0
+    simple_prompt:
+      enabled: true
+      thresholds:
+        estimated_tokens_max: 600
+        message_count_max: 3
+      weights:
+        tier3: 2.0
 
 # ===== Fallback / Degradation =====
 fallback:

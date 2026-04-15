@@ -53,11 +53,23 @@ class StreamProxy:
             "message_count": route_info.get("message_count", 0),
             "matched_rule": route_info.get("matched_rule"),
             "matched_by": route_info.get("matched_by"),
+            "selected_tier": route_info.get("selected_tier", tier),
+            "degraded_to_tier": route_info.get("degraded_to_tier"),
+            "tier_scores": route_info.get("tier_scores", {}),
+            "score_breakdown": route_info.get("score_breakdown", {}),
+            "detected_features": route_info.get("detected_features", []),
+            "feature_values": route_info.get("feature_values", {}),
+            "request_shape": route_info.get("request_shape", {}),
+            "task_type": route_info.get("task_type"),
+            "decision_path": route_info.get("decision_path", []),
+            "legacy_rule_matches": route_info.get("legacy_rule_matches", []),
+            "model_selection": route_info.get("model_selection", {}),
             "routed_model": model_id,
             "routed_tier": tier,
             "routed_provider": model_info.get("provider", "unknown"),
             "is_fallback": False,
             "fallback_chain": [],
+            "fallback_reason": None,
             "latency_ms": None,
             "ttft_ms": None,
             "is_stream": is_stream,
@@ -96,6 +108,7 @@ class StreamProxy:
             log_entry["latency_ms"] = round(elapsed_ms)
             log_entry["status"] = 502
             log_entry["error"] = str(e)
+            log_entry["fallback_reason"] = str(e)
 
             fallback = await self._try_fallback_anthropic(body, model_id, is_stream, log_entry)
             if fallback is not None:
@@ -108,6 +121,9 @@ class StreamProxy:
         """Stream Anthropic SSE response."""
         async def generate():
             ttft_recorded = False
+            log_entry["routed_model"] = model_id
+            log_entry["routed_tier"] = tier
+            log_entry["routed_provider"] = self.config.model_registry.get(model_id, {}).get("provider", "unknown")
             try:
                 # Inject routing info as first SSE event
                 yield f"event: routing\ndata: {json.dumps({'model': model_id, 'tier': tier})}\n\n"
@@ -132,6 +148,7 @@ class StreamProxy:
                         if not ttft_recorded:
                             ttft_ms = (time.monotonic() - start) * 1000
                             log_entry["ttft_ms"] = round(ttft_ms)
+                            self.tracker.record_ttft(model_id, ttft_ms)
                             ttft_recorded = True
                         yield line + "\n\n"
 
@@ -164,6 +181,9 @@ class StreamProxy:
 
     async def _anthropic_normal(self, url, headers, body, model_id, tier, timeout, start, log_entry) -> JSONResponse:
         """Non-streaming Anthropic request."""
+        log_entry["routed_model"] = model_id
+        log_entry["routed_tier"] = tier
+        log_entry["routed_provider"] = self.config.model_registry.get(model_id, {}).get("provider", "unknown")
         resp = await self.client.post(
             url, json=body, headers=headers,
             timeout=httpx.Timeout(connect=10, read=timeout, write=10, pool=10),
@@ -239,6 +259,7 @@ class StreamProxy:
         # Record in fallback chain
         log_entry["fallback_chain"].append({"model": model_id, "tier": tier, "error": ""})
         log_entry["is_fallback"] = True
+        log_entry["fallback_reason"] = log_entry.get("fallback_reason") or f"primary model {failed_model} failed"
 
         forward_body = {**request_body, "model": model_id}
         url = provider_cfg["base_url"].rstrip("/") + "/v1/messages"
@@ -263,6 +284,7 @@ class StreamProxy:
                 if resp.status_code == 200:
                     log_entry["routed_model"] = model_id
                     log_entry["routed_tier"] = tier
+                    log_entry["routed_provider"] = model_entry["provider"]
                     log_entry["latency_ms"] = round(elapsed_ms)
                     log_entry["status"] = 200
                     self.req_logger.log(log_entry)

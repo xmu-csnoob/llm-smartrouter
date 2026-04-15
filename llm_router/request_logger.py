@@ -2,9 +2,7 @@
 
 import asyncio
 import json
-import time
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -54,23 +52,36 @@ class RequestLogger:
             return
         self._queue.put_nowait(entry)
 
-    def get_recent(self, limit: int = 50) -> list[dict]:
-        """Read the last N entries from today's log file."""
+    def get_recent(self, offset: int = 0, limit: int = 50) -> dict:
+        """Read paginated entries from log files.
+
+        Returns:
+            dict: { "entries": [...], "total": N, "offset": offset, "limit": limit }
+        """
         if not self.enabled:
-            return []
-        path = self._today_file()
-        if not path.exists():
-            return []
-        lines = path.read_text().strip().split("\n")
-        entries = []
-        for line in lines[-limit:]:
-            line = line.strip()
-            if line:
-                try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
-        return list(reversed(entries))
+            return {"entries": [], "total": 0, "offset": offset, "limit": limit}
+
+        if not self.log_dir.exists():
+            return {"entries": [], "total": 0, "offset": offset, "limit": limit}
+
+        all_entries = self._read_all_entries()
+        all_entries.sort(key=lambda entry: entry.get("timestamp", ""), reverse=True)
+
+        total = len(all_entries)
+        entries = all_entries[offset:offset + limit]
+
+        return {
+            "entries": entries,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
+
+    def get_entries_for_analysis(self, hours: int = 24) -> list[dict]:
+        """Get all entries within the time window, sorted by timestamp."""
+        entries = self._read_recent_entries(hours)
+        entries.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+        return entries
 
     def get_stats(self, hours: int = 24) -> dict:
         """Aggregate stats from recent log files."""
@@ -78,7 +89,23 @@ class RequestLogger:
             return {}
         entries = self._read_recent_entries(hours)
         if not entries:
-            return {"total": 0, "models": {}, "avg_latency_ms": None}
+            return {
+                "total": 0,
+                "errors": 0,
+                "error_rate": 0,
+                "fallbacks": 0,
+                "fallback_rate": 0,
+                "avg_latency_ms": None,
+                "avg_ttft_ms": None,
+                "models": {},
+                "selected_tiers": {},
+                "routed_tiers": {},
+                "matched_by": {},
+                "matched_rules": {},
+                "feature_counts": {},
+                "fallback_reasons": {},
+                "avg_tier_scores": {},
+            }
 
         total = len(entries)
         errors = sum(1 for e in entries if e.get("status") != 200)
@@ -87,19 +114,63 @@ class RequestLogger:
         ttfts = [e["ttft_ms"] for e in entries if e.get("ttft_ms") is not None]
 
         models = {}
+        selected_tiers = {}
+        routed_tiers = {}
+        matched_by = {}
+        matched_rules = {}
+        feature_counts = {}
+        fallback_reasons = {}
+        tier_score_totals = {}
         for e in entries:
             m = e.get("routed_model", "unknown")
             if m not in models:
-                models[m] = {"count": 0, "errors": 0, "total_latency": 0}
+                models[m] = {"count": 0, "errors": 0, "total_latency": 0, "total_ttft": 0, "ttft_samples": 0}
             models[m]["count"] += 1
             if e.get("status") != 200:
                 models[m]["errors"] += 1
-            if e.get("latency_ms"):
+            if e.get("latency_ms") is not None:
                 models[m]["total_latency"] += e["latency_ms"]
+            if e.get("ttft_ms") is not None:
+                models[m]["total_ttft"] += e["ttft_ms"]
+                models[m]["ttft_samples"] += 1
+
+            selected_tier = e.get("selected_tier")
+            if selected_tier:
+                selected_tiers[selected_tier] = selected_tiers.get(selected_tier, 0) + 1
+
+            routed_tier = e.get("routed_tier")
+            if routed_tier:
+                routed_tiers[routed_tier] = routed_tiers.get(routed_tier, 0) + 1
+
+            matched_by_value = e.get("matched_by")
+            if matched_by_value:
+                matched_by[matched_by_value] = matched_by.get(matched_by_value, 0) + 1
+
+            matched_rule = e.get("matched_rule")
+            if matched_rule:
+                matched_rules[matched_rule] = matched_rules.get(matched_rule, 0) + 1
+
+            for feature in e.get("detected_features", []):
+                feature_counts[feature] = feature_counts.get(feature, 0) + 1
+
+            fallback_reason = e.get("fallback_reason")
+            if fallback_reason:
+                fallback_reasons[fallback_reason] = fallback_reasons.get(fallback_reason, 0) + 1
+
+            for tier_name, score in (e.get("tier_scores") or {}).items():
+                tier_score_totals.setdefault(tier_name, []).append(score)
 
         for m in models:
             c = models[m]["count"]
             models[m]["avg_latency_ms"] = round(models[m]["total_latency"] / c, 1) if c else 0
+            ttft_samples = models[m]["ttft_samples"]
+            models[m]["avg_ttft_ms"] = round(models[m]["total_ttft"] / ttft_samples, 1) if ttft_samples else None
+
+        avg_tier_scores = {
+            tier_name: round(sum(scores) / len(scores), 2)
+            for tier_name, scores in tier_score_totals.items()
+            if scores
+        }
 
         return {
             "total": total,
@@ -110,6 +181,13 @@ class RequestLogger:
             "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
             "avg_ttft_ms": round(sum(ttfts) / len(ttfts), 1) if ttfts else None,
             "models": models,
+            "selected_tiers": selected_tiers,
+            "routed_tiers": routed_tiers,
+            "matched_by": matched_by,
+            "matched_rules": matched_rules,
+            "feature_counts": feature_counts,
+            "fallback_reasons": fallback_reasons,
+            "avg_tier_scores": avg_tier_scores,
         }
 
     async def _flush_loop(self):
@@ -166,17 +244,44 @@ class RequestLogger:
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return self.log_dir / f"requests-{date_str}.jsonl"
 
+    def _read_all_entries(self) -> list[dict]:
+        entries = []
+        for path in sorted(self.log_dir.glob("requests-*.jsonl")):
+            entries.extend(self._read_entries_from_file(path))
+        return entries
+
     def _read_recent_entries(self, hours: int = 24) -> list[dict]:
         """Read entries from log files within the last N hours."""
         entries = []
         if not self.log_dir.exists():
             return entries
+        cutoff = datetime.now(timezone.utc).timestamp() - hours * 3600
         for path in sorted(self.log_dir.glob("requests-*.jsonl")):
-            for line in path.read_text().strip().split("\n"):
-                line = line.strip()
-                if line:
+            for entry in self._read_entries_from_file(path):
+                ts = entry.get("timestamp", "")
+                if ts:
                     try:
-                        entries.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        pass
+                        entry_time = datetime.fromisoformat(ts).timestamp()
+                        if entry_time >= cutoff:
+                            entries.append(entry)
+                    except (ValueError, OSError):
+                        entries.append(entry)
+                else:
+                    entries.append(entry)
+        return entries
+
+    @staticmethod
+    def _read_entries_from_file(path: Path) -> list[dict]:
+        entries = []
+        text = path.read_text(encoding="utf-8").strip()
+        if not text:
+            return entries
+        for line in text.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
         return entries
