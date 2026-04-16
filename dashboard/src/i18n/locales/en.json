@@ -47,10 +47,13 @@
     "modelDistribution": "Model Distribution",
     "noData": "No data yet",
     "latencyTrend": "Latency Trend",
+    "intentDistribution": "Intent Distribution",
+    "difficultyDistribution": "Difficulty Distribution",
     "request": "Request",
     "requests": "{value} requests (avg {avgLatency}ms)",
     "requestLabel": "Request {label} — {model}",
-    "requestLabelShort": "Request {label}"
+    "requestLabelShort": "Request {label}",
+    "intentDifficulty": "Intent & Difficulty"
   },
   "analysis": {
     "title": "Log Analysis",

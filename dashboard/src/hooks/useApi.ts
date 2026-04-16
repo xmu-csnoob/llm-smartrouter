@@ -115,6 +115,8 @@ export interface Stats {
   missing_selected_tier_count: number;
   task_types: Record<string, number>;
   schema_versions: Record<string, number>;
+  intent_distribution: Record<string, number>;
+  difficulty_distribution: Record<string, number>;
 }
 
 export async function fetchRecent(offset = 0, limit = 50, model?: string | null): Promise<RecentResponse> {
