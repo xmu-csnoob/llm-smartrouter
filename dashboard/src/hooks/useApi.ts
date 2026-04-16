@@ -117,9 +117,10 @@ export interface Stats {
   schema_versions: Record<string, number>;
 }
 
-export async function fetchRecent(offset = 0, limit = 50, model?: string | null): Promise<RecentResponse> {
+export async function fetchRecent(offset = 0, limit = 50, model?: string | null, key?: string | null): Promise<RecentResponse> {
   const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
   if (model) params.set('model', model);
+  if (key) params.set('key', key);
   const res = await fetch(`${API_BASE}/logs/recent?${params}`);
   return res.json();
 }

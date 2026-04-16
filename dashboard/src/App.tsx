@@ -18,6 +18,7 @@ function App() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [keyStats, setKeyStats] = useState<KeyStatsResponse | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
@@ -52,7 +53,7 @@ function App() {
     const load = async () => {
       try {
         const offset = (currentAllPage - 1) * pageSize
-        const response = await fetchRecent(offset, pageSize, null)
+        const response = await fetchRecent(offset, pageSize, null, selectedKey)
         setAllEntries(response.entries)
         setTotalAllEntries(response.total)
       } catch {}
@@ -60,7 +61,7 @@ function App() {
     load()
     const interval = setInterval(load, 10000)
     return () => clearInterval(interval)
-  }, [currentAllPage])
+  }, [currentAllPage, selectedKey])
 
   // Load model-specific logs
   useEffect(() => {
@@ -68,7 +69,7 @@ function App() {
     const load = async () => {
       try {
         const offset = (currentModelPage - 1) * pageSize
-        const response = await fetchRecent(offset, pageSize, selectedModel)
+        const response = await fetchRecent(offset, pageSize, selectedModel, selectedKey)
         setModelEntries(response.entries)
         setTotalModelEntries(response.total)
       } catch {}
@@ -76,7 +77,7 @@ function App() {
     load()
     const interval = setInterval(load, 10000)
     return () => clearInterval(interval)
-  }, [selectedModel, currentModelPage])
+  }, [selectedModel, currentModelPage, selectedKey])
 
   // Load key stats
   useEffect(() => {
@@ -93,6 +94,7 @@ function App() {
 
   const handleModelSelect = (model: string) => {
     setSelectedModel(model)
+    setSelectedKey(null)
     setCurrentModelPage(1)
     setModelEntries([])
     setTotalModelEntries(0)
@@ -119,7 +121,7 @@ function App() {
     } catch {}
     try {
       const offset = (currentAllPage - 1) * pageSize
-      const response = await fetchRecent(offset, pageSize, null)
+      const response = await fetchRecent(offset, pageSize, null, selectedKey)
       setAllEntries(response.entries)
       setTotalAllEntries(response.total)
     } catch {}
@@ -302,7 +304,12 @@ function App() {
                     {keyStats && (
                       <KeyStatsTable
                         keys={keyStats.keys}
-                        onKeyClick={() => { setNav('logs'); /* TODO: filter RequestTable by selected key once fetchRecent supports ?key= filter */ }}
+                        onKeyClick={(key) => {
+                          setSelectedKey(key)
+                          setSelectedModel(null)
+                          setCurrentAllPage(1)
+                          setNav('logs')
+                        }}
                       />
                     )}
                   </div>
@@ -356,6 +363,15 @@ function App() {
                       <span className="text-xs text-muted-foreground font-mono">
                         {totalAllEntries.toLocaleString()} total
                       </span>
+                      {selectedKey && (
+                        <button
+                          onClick={() => { setSelectedKey(null); setCurrentAllPage(1); }}
+                          className="ml-2 px-1.5 py-0.5 rounded text-xs font-mono"
+                          style={{ background: 'hsl(200 75% 45%)', color: 'white' }}
+                        >
+                          key:{selectedKey} ×
+                        </button>
+                      )}
                     </div>
                     <RequestTable
                       entries={allEntries}

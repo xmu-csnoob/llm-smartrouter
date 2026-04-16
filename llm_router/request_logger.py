@@ -131,7 +131,7 @@ class RequestLogger:
             result = self.archive_logs()
             logger.info(f"Auto-archived {result['total_archived']} files")
 
-    def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None) -> dict:
+    def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None, key: str | None = None) -> dict:
         """Read paginated entries from log files.
 
         Returns:
@@ -148,6 +148,9 @@ class RequestLogger:
 
         if model:
             all_entries = [e for e in all_entries if e.get("routed_model") == model]
+
+        if key:
+            all_entries = [e for e in all_entries if e.get("client_api_key") == key]
 
         total = len(all_entries)
         entries = all_entries[offset:offset + limit]

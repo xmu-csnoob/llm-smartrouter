@@ -313,8 +313,8 @@ def create_app(config: RouterConfig) -> FastAPI:
             return JSONResponse(status_code=500, content={"error": str(e)})
 
     @app.get("/api/logs/recent")
-    async def recent_logs(offset: int = 0, limit: int = 50, model: str | None = None):
-        return req_logger.get_recent(offset, limit, model=model)
+    async def recent_logs(offset: int = 0, limit: int = 50, model: str | None = None, key: str | None = None):
+        return req_logger.get_recent(offset, limit, model=model, key=key)
 
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
