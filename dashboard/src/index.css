@@ -1277,6 +1277,20 @@
   }
 }
 
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.intent-ticker-track {
+  animation: ticker-scroll 18s linear infinite;
+  will-change: transform;
+}
+
+.intent-ticker-track:hover {
+  animation-play-state: paused;
+}
+
 .gs-panel {
   animation: fade-in-up 400ms ease-out both;
 }
