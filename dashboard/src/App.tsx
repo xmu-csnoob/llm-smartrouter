@@ -63,6 +63,7 @@ import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
 import { ErrorMessageCluster } from './components/ErrorMessageCluster'
 import { IntentFlowMonitor } from './components/IntentFlowMonitor'
 import { LatencySpreadChart } from './components/LatencySpreadChart'
+import { RoutingEntropyPanel } from './components/RoutingEntropyPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -435,6 +436,7 @@ function App() {
               <RoutingRuleLeaderboard entries={allEntries} />
               <ErrorMessageCluster entries={allEntries} />
               <IntentFlowMonitor entries={allEntries} />
+              <RoutingEntropyPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
