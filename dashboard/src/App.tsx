@@ -35,6 +35,7 @@ import { QualityGuardMonitor } from './components/QualityGuardMonitor'
 import { TierSelectionStability } from './components/TierSelectionStability'
 import { ModelRoutingDelta } from './components/ModelRoutingDelta'
 import { StatusCodeDistribution } from './components/StatusCodeDistribution'
+import { TokenConsumptionPanel } from './components/TokenConsumptionPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -381,6 +382,7 @@ function App() {
               <TierSelectionStability entries={allEntries} />
               <ModelRoutingDelta entries={allEntries} />
               <StatusCodeDistribution entries={allEntries} />
+              <TokenConsumptionPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
