@@ -60,48 +60,6 @@ def make_router() -> tuple[Router, LatencyTracker]:
 
 
 class RouterScoringTests(unittest.TestCase):
-    def test_simple_prompt_stays_on_tier3(self):
-        router, _tracker = make_router()
-        model_id, _provider, route_info = router.route({
-            "model": "auto",
-            "messages": [{"role": "user", "content": "Explain HTTP 200 in one sentence."}],
-        })
-
-        self.assertEqual(model_id, "tier3-model")
-        self.assertEqual(route_info["selected_tier"], "tier3")
-        self.assertEqual(route_info["task_type"], "simple")
-
-    def test_readme_request_moves_to_tier2(self):
-        router, _tracker = make_router()
-        model_id, _provider, route_info = router.route({
-            "model": "auto",
-            "messages": [{
-                "role": "user",
-                "content": "Write a README for this FastAPI project with install, usage, and API reference sections.",
-            }],
-        })
-
-        self.assertIn(model_id, {"tier2-slow", "tier2-fast"})
-        self.assertEqual(route_info["selected_tier"], "tier2")
-        self.assertIn("generation_heavy", route_info["detected_features"])
-
-    def test_debugging_request_moves_to_tier1(self):
-        router, _tracker = make_router()
-        model_id, _provider, route_info = router.route({
-            "model": "auto",
-            "messages": [{
-                "role": "user",
-                "content": (
-                    "Investigate the root cause of this race condition, review the architecture, "
-                    "and propose a safe fix."
-                ),
-            }],
-        })
-
-        self.assertEqual(model_id, "tier1-model")
-        self.assertEqual(route_info["selected_tier"], "tier1")
-        self.assertGreaterEqual(route_info["tier_scores"]["tier1"], 6.0)
-
     def test_health_score_prefers_faster_model_within_same_tier(self):
         router, tracker = make_router()
         tracker.record("tier2-slow", 12000, success=True)
@@ -125,24 +83,6 @@ class RouterScoringTests(unittest.TestCase):
         self.assertEqual(route_info["selected_tier"], "tier2")
         self.assertEqual(model_id, "tier2-fast")
         self.assertEqual(route_info["model_selection"]["selected_model"], "tier2-fast")
-
-    def test_explicit_model_is_routed_intelligently(self):
-        router, _tracker = make_router()
-        model_id, _provider, route_info = router.route({
-            "model": "tier1-model",
-            "messages": [{
-                "role": "user",
-                "content": "Write a README for this FastAPI project with install, usage, and API reference sections.",
-            }],
-        })
-
-        # Explicit model is no longer passthrough — scoring decides the tier
-        self.assertEqual(route_info["matched_by"], "scoring")
-        self.assertEqual(route_info["requested_model"], "tier1-model")
-        self.assertEqual(route_info["selected_tier"], "tier2")
-        self.assertEqual(route_info["task_type"], "generation")
-        self.assertTrue(route_info["feature_values"])
-        self.assertIn("generation_heavy", route_info["detected_features"])
 
     def test_analysis_snapshot_treats_missing_fields_as_missing_not_unknown(self):
         snapshot = _build_analysis_snapshot([

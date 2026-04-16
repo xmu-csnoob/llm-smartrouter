@@ -208,8 +208,8 @@ class TestBertTinyRouterModel(unittest.TestCase):
         mock_tokenizer = MagicMock()
         mock_model = MagicMock()
 
-        with patch("llm_router.model_loader.AutoTokenizer") as mock_tokenizer_class, \
-             patch("llm_router.model_loader.AutoModelForSequenceClassification") as mock_model_class:
+        with patch("transformers.AutoTokenizer") as mock_tokenizer_class, \
+             patch("transformers.AutoModelForSequenceClassification") as mock_model_class:
             mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
             mock_model_class.from_pretrained.return_value = mock_model
 
@@ -237,8 +237,8 @@ class TestBertTinyRouterModel(unittest.TestCase):
         mock_tokenizer = MagicMock()
         mock_model = MagicMock()
 
-        with patch("llm_router.model_loader.AutoTokenizer") as mock_tokenizer_class, \
-             patch("llm_router.model_loader.AutoModelForSequenceClassification") as mock_model_class:
+        with patch("transformers.AutoTokenizer") as mock_tokenizer_class, \
+             patch("transformers.AutoModelForSequenceClassification") as mock_model_class:
             mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
             mock_model_class.from_pretrained.return_value = mock_model
 
