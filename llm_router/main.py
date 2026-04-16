@@ -233,6 +233,48 @@ def create_app(config: RouterConfig) -> FastAPI:
         result = req_logger.archive_logs()
         return result
 
+    @app.get("/api/routing/export")
+    async def routing_export(
+        hours: int = 24,
+        tier: str | None = None,
+        task_type: str | None = None,
+        intent: str | None = None,
+        difficulty: str | None = None,
+    ):
+        """
+        Stream routing decisions as JSONL for ML feedback loop / compliance audit.
+
+        Filter params (all optional):
+        - hours: time window (default 24, max 168 = 7 days)
+        - tier: routed_tier filter (e.g. tier1, tier2, tier3)
+        - task_type: task type filter (e.g. implementation, debug, general)
+        - intent: semantic intent filter (e.g. debug, design, implementation)
+        - difficulty: difficulty filter (e.g. simple, medium, hard)
+
+        Returns streaming NDJSON with one routing record per line.
+        """
+        hours = min(max(hours, 1), 168)  # clamp 1-168
+
+        async def generate():
+            count = 0
+            max_entries = 100_000
+            async for entry in req_logger.stream_export_entries(hours, tier, task_type, intent, difficulty):
+                count += 1
+                if count > max_entries:
+                    break
+                yield json.dumps(entry, ensure_ascii=False) + "\n"
+            logger.info(f"Routing export: served {count} entries")
+
+        return StreamingResponse(
+            generate(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Export-Count": "streaming",
+                "X-Export-Filter-Hours": str(hours),
+            },
+        )
+
     @app.get("/api/logs/replay")
     async def replay_logs(hours: int = 24, limit: int = 100):
         entries = req_logger.get_entries_for_analysis(hours)[:limit]

@@ -311,6 +311,93 @@ class RequestLogger:
             "observability_only_count": observability_only_count,
         }
 
+    async def stream_export_entries(
+        self,
+        hours: int = 24,
+        tier: str | None = None,
+        task_type: str | None = None,
+        intent: str | None = None,
+        difficulty: str | None = None,
+    ):
+        """
+        Async generator that yields filtered log entries as routing export records.
+
+        Yields dicts with the following export schema:
+        {
+            "timestamp", "routed_model", "routed_tier",
+            "task_type", "intent", "difficulty",
+            "matched_by", "matched_rule", "routing_reason",
+            "latency_ms", "ttft_ms", "status",
+            "input_tokens", "output_tokens", "cost",
+            "client_api_key" (hashed),
+            "error",
+            "is_fallback", "fallback_reason"
+        }
+        """
+        if not self.enabled or not self.log_dir.exists():
+            return
+
+        cutoff = datetime.now(timezone.utc).timestamp() - hours * 3600
+
+        # Collect matching files
+        archive_dir = self.log_dir / self.archive_dir_name
+        for path in sorted(self.log_dir.glob("requests-*.jsonl")):
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
+            for entry in self._read_entries_from_file(path):
+                ts = entry.get("timestamp", "")
+                if ts:
+                    try:
+                        entry_time = datetime.fromisoformat(ts).timestamp()
+                        if entry_time < cutoff:
+                            continue
+                    except (ValueError, OSError):
+                        pass
+
+                # Apply filters
+                if tier and entry.get("routed_tier") != tier:
+                    continue
+                if task_type and entry.get("task_type") != task_type:
+                    continue
+                if intent and entry.get("intent") != intent:
+                    continue
+                if difficulty and entry.get("difficulty") != difficulty:
+                    continue
+
+                # Build routing_reason
+                matched_by = entry.get("matched_by", "")
+                matched_rule = entry.get("matched_rule", "")
+                routing_reason = f"{matched_by}:{matched_rule}" if matched_by and matched_rule else matched_by or matched_rule or "unknown"
+
+                # Hash API key for privacy
+                raw_key = entry.get("client_api_key") or "anonymous"
+                hashed_key = _hash_api_key(raw_key) if raw_key != "anonymous" else "anonymous"
+
+                yield {
+                    "timestamp": ts,
+                    "routed_model": entry.get("routed_model"),
+                    "routed_tier": entry.get("routed_tier"),
+                    "task_type": entry.get("task_type"),
+                    "intent": entry.get("intent"),
+                    "difficulty": entry.get("difficulty"),
+                    "matched_by": matched_by,
+                    "matched_rule": matched_rule,
+                    "routing_reason": routing_reason,
+                    "latency_ms": entry.get("latency_ms"),
+                    "ttft_ms": entry.get("ttft_ms"),
+                    "status": entry.get("status"),
+                    "input_tokens": entry.get("input_tokens"),
+                    "output_tokens": entry.get("output_tokens"),
+                    "cost": entry.get("cost"),
+                    "client_api_key": hashed_key,
+                    "error": entry.get("error"),
+                    "is_fallback": entry.get("is_fallback"),
+                    "fallback_reason": entry.get("fallback_reason"),
+                    # Deprecated / optional fields
+                    "selected_tier": entry.get("selected_tier"),
+                    "prompt": entry.get("prompt"),  # already redacted at write-time
+                }
+
     def get_key_stats(self, hours: int = 24) -> dict:
         """Aggregate usage stats per API key from recent log entries.
 
