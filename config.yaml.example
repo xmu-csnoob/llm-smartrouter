@@ -103,6 +103,64 @@ scoring:
       weights:
         tier3: 2.0
 
+# ===== Semantic Features (Schema v3 — data collection only) =====
+semantic_features:
+  enabled: true
+  # Keyword signal extraction for ML router training data
+  keyword_signals:
+    enabled: true
+  # Intent classification priority order
+  intent_classifier:
+    enabled: true
+    priority_order:
+      - debug
+      - implementation
+      - architecture
+      - analysis
+      - simple
+      - general
+
+# ===== ML Routing (Phase 2) =====
+ml_routing:
+  enabled: false
+  model_name: "leftfield7/bert-tiny-llm-router"
+  model_cache_dir: "./models/cache"
+  manifest_path: "./models/manifest.json"
+  inference:
+    timeout_ms: 50
+    fallback_on_error: true
+  weights:
+    tier1: 2.0
+    tier2: 2.0
+    tier3: 2.0
+
+# ===== Redaction (PII masking for logged requests) =====
+redaction:
+  enabled: true
+  redact_paths: true   # Redact file paths to basename only
+
+# ===== Shadow Policy (lower-tier sampling for training data) =====
+shadow_policy:
+  enabled: false
+  # observe_only_rate: 1.0 means 100% observe-only (no forced lower-tier sampling)
+  observe_only_rate: 1.0
+  forced_tier1_to_tier2_rate: 0.01   # 1% of tier1 requests forced to tier2
+  forced_tier2_to_tier3_rate: 0.02  # 2% of tier2 requests forced to tier3
+  forbid_direct_tier1_to_tier3: true
+  # Hard exclusions — requests matching these are never forced to lower tier
+  hard_exclusions:
+    stacktrace_count_gte: 1
+    code_block_count_gte: 3
+    file_path_count_gte: 3
+    estimated_tokens_gte: 3500
+    message_count_gte: 12
+    tool_count_gte: 1
+    # streaming_large_output: streaming + max_tokens >= 4096
+    # explicit_model_request: matched_by == "passthrough"
+    # architecture_task: task_type == "architecture"
+    # debug_keywords_detected: debug keywords in request
+    # sensitive_info_detected: email/phone/API key patterns
+
 # ===== Fallback / Degradation =====
 fallback:
   latency_threshold_ms: 30000
@@ -119,6 +177,9 @@ logging:
   flush_interval_seconds: 2
   flush_batch_size: 50
   retention_days: 30
+  archive_dir: "archive"           # Archive subdirectory name (relative to dir)
+  auto_archive_count: 10000       # Auto-archive when entry count exceeds this
+  auto_archive_days: 7            # Auto-archive when oldest entry exceeds this (days)
 
 # ===== Server =====
 server:

@@ -19,6 +19,8 @@ from .router import Router
 from .proxy import StreamProxy
 from .request_logger import RequestLogger
 from .schemas import ModelInfo, StatusResponse
+from .shadow_policy import ShadowPolicy
+from .redaction import Redactor
 
 logger = logging.getLogger("llm_router")
 
@@ -133,7 +135,9 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     tracker = LatencyTracker(config.fallback)
     router = Router(config, tracker, ml_model=ml_model)
-    proxy = StreamProxy(config, router, tracker, req_logger)
+    shadow_policy = ShadowPolicy(config.shadow_policy_config)
+    redactor = Redactor(config.redaction_config)
+    proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor)
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request):
@@ -180,7 +184,7 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     @app.post("/reload")
     async def reload_config():
-        nonlocal tracker, router, proxy, ml_model
+        nonlocal tracker, router, proxy, ml_model, shadow_policy, redactor
         try:
             await proxy.client.aclose()
             config.load()
@@ -203,7 +207,9 @@ def create_app(config: RouterConfig) -> FastAPI:
 
             tracker = LatencyTracker(config.fallback)
             router = Router(config, tracker, ml_model=ml_model)
-            proxy = StreamProxy(config, router, tracker, req_logger)
+            shadow_policy = ShadowPolicy(config.shadow_policy_config)
+            redactor = Redactor(config.redaction_config)
+            proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor)
             return {"status": "reloaded"}
         except Exception as e:
             return JSONResponse(status_code=500, content={"error": str(e)})
@@ -215,6 +221,11 @@ def create_app(config: RouterConfig) -> FastAPI:
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
         return req_logger.get_stats(hours)
+
+    @app.post("/api/logs/archive")
+    async def archive_logs():
+        result = req_logger.archive_logs()
+        return result
 
     @app.get("/api/logs/replay")
     async def replay_logs(hours: int = 24, limit: int = 100):

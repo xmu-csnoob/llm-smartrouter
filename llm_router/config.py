@@ -97,6 +97,9 @@ class RouterConfig:
             "flush_interval_seconds": cfg.get("flush_interval_seconds", 2),
             "flush_batch_size": cfg.get("flush_batch_size", 50),
             "retention_days": cfg.get("retention_days", 30),
+            "archive_dir": cfg.get("archive_dir", "archive"),
+            "auto_archive_count": cfg.get("auto_archive_count", 10000),
+            "auto_archive_days": cfg.get("auto_archive_days", 7),
         }
 
     @property
@@ -131,4 +134,31 @@ class RouterConfig:
                 "fallback_on_error": cfg.get("inference", {}).get("fallback_on_error", True),
             },
             "weights": cfg.get("weights", {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0}),
+        }
+
+    @property
+    def shadow_policy_config(self) -> dict:
+        """Return shadow policy config with defaults."""
+        cfg = self._raw.get("shadow_policy", {})
+        return {
+            "enabled": cfg.get("enabled", False),
+            "observe_only_rate": cfg.get("observe_only_rate", 1.0),
+            "forced_tier1_to_tier2_rate": cfg.get("forced_tier1_to_tier2_rate", 0.01),
+            "forced_tier2_to_tier3_rate": cfg.get("forced_tier2_to_tier3_rate", 0.02),
+            "forbid_direct_tier1_to_tier3": cfg.get("forbid_direct_tier1_to_tier3", True),
+            "hard_exclusions": cfg.get("hard_exclusions", {}),
+            "debug_keywords": cfg.get("debug_keywords", [
+                "debug", "root cause", "redesign", "refactor",
+                "broken", "not working", "error", "fix",
+                "bug", "crash", "fail", "issue", "problem",
+            ]),
+        }
+
+    @property
+    def redaction_config(self) -> dict:
+        """Return redaction config with defaults."""
+        cfg = self._raw.get("redaction", {})
+        return {
+            "enabled": cfg.get("enabled", True),
+            "redact_paths": cfg.get("redact_paths", True),
         }

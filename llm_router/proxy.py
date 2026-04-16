@@ -5,6 +5,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 import httpx
 from fastapi import HTTPException
@@ -14,20 +15,101 @@ from .config import RouterConfig
 from .router import Router
 from .latency import LatencyTracker
 from .request_logger import RequestLogger
+from .scoring import extract_text_from_messages, extract_text_from_system
+from . import semantic_features
 
 logger = logging.getLogger("llm_router")
 
-LOG_SCHEMA_VERSION = 2
+LOG_SCHEMA_VERSION = 3
+
+
+def _build_schema_v3_fields(
+    request_body: dict,
+    route_info: dict,
+    tracker: LatencyTracker,
+    config: RouterConfig,
+) -> tuple[dict, dict, dict]:
+    """Extract raw_features, semantic_features, and router_context for Schema v3.
+
+    All computation is pure CPU with no external I/O — < 1ms total.
+    """
+    messages = request_body.get("messages", [])
+    system = request_body.get("system")
+    feature_values = route_info.get("feature_values", {})
+
+    # --- raw_features ---
+    system_text = extract_text_from_system(system)
+    message_text = extract_text_from_messages(messages)
+
+    raw_features = {
+        "estimated_tokens": feature_values.get("estimated_tokens", 0),
+        "message_count": feature_values.get("message_count", 0),
+        "user_message_count": feature_values.get("user_message_count", 0),
+        "assistant_message_count": feature_values.get("assistant_message_count", 0),
+        "tool_count": feature_values.get("tool_count", 0),
+        "question_count": feature_values.get("question_count", 0),
+        "code_block_count": feature_values.get("code_block_count", 0),
+        "file_path_count": feature_values.get("file_path_count", 0),
+        "stacktrace_count": feature_values.get("stacktrace_count", 0),
+        "max_tokens_requested": feature_values.get("max_tokens_requested", 0),
+        "input_chars": feature_values.get("input_chars", 0),
+        "has_system_prompt": bool(system_text),
+        "system_prompt_chars": len(system_text),
+        "is_stream": request_body.get("stream", False),
+        "is_followup": bool(messages) and messages[-1].get("role") == "assistant",
+        "hour_of_day_utc": datetime.now(timezone.utc).hour,
+    }
+
+    # --- semantic_features ---
+    combined_text = " ".join(p for p in [system_text, message_text] if p)
+    semantic_out = semantic_features.extract_semantic_features(
+        messages=messages,
+        request_text=combined_text,
+        raw_features=raw_features,
+    )
+
+    # --- router_context ---
+    router_context: dict[str, Any] = {
+        "tier1_health_score": None,
+        "tier2_health_score": None,
+        "tier3_health_score": None,
+        "selected_tier": route_info.get("selected_tier"),
+        "matched_by": route_info.get("matched_by"),
+    }
+    for tier_name in ("tier1", "tier2", "tier3"):
+        models = config.models.get(tier_name, [])
+        if not models:
+            continue
+        scores = []
+        for m in models:
+            avg_lat = tracker.get_avg_latency(m["id"])
+            avg_ttft = tracker.get_avg_ttft(m["id"])
+            errs = tracker.get_consecutive_errors(m["id"])
+            score = 100.0
+            latency_threshold = 30000.0
+            ttft_threshold = latency_threshold / 4
+            if avg_lat is not None:
+                score -= min((avg_lat / latency_threshold) * 40.0, 40.0)
+            if avg_ttft is not None:
+                score -= min((avg_ttft / ttft_threshold) * 20.0, 20.0)
+            score -= errs * 15.0
+            scores.append(score)
+        if scores:
+            router_context[f"{tier_name}_health_score"] = round(sum(scores) / len(scores), 1)
+
+    return raw_features, semantic_out, router_context
 
 
 class StreamProxy:
     """Forwards requests to providers with SSE passthrough and fallback."""
 
-    def __init__(self, config: RouterConfig, router: Router, tracker: LatencyTracker, req_logger: RequestLogger):
+    def __init__(self, config: RouterConfig, router: Router, tracker: LatencyTracker, req_logger: RequestLogger, shadow_policy=None, redactor=None):
         self.config = config
         self.router = router
         self.tracker = tracker
         self.req_logger = req_logger
+        self.shadow_policy = shadow_policy
+        self.redactor = redactor
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0),
             trust_env=False,
@@ -81,6 +163,53 @@ class StreamProxy:
             "status": 200,
             "error": None,
         }
+
+        # --- Schema v3: enrich log entry with semantic features ---
+        raw_features, semantic_features_out, router_context = _build_schema_v3_fields(
+            request_body, route_info, self.tracker, self.config,
+        )
+        log_entry["raw_features"] = raw_features
+        log_entry["semantic_features"] = semantic_features_out
+        log_entry["router_context"] = router_context
+
+        # --- Shadow policy decision ---
+        if self.shadow_policy is not None:
+            from .schemas import FeatureSnapshot
+            feature_values = route_info.get("feature_values", {})
+            feature_snapshot = FeatureSnapshot(
+                estimated_tokens=raw_features.get("estimated_tokens", 0),
+                message_count=raw_features.get("message_count", 0),
+                user_message_count=raw_features.get("user_message_count", 0),
+                assistant_message_count=raw_features.get("assistant_message_count", 0),
+                code_block_count=raw_features.get("code_block_count", 0),
+                file_path_count=raw_features.get("file_path_count", 0),
+                stacktrace_count=raw_features.get("stacktrace_count", 0),
+                tool_count=raw_features.get("tool_count", 0),
+                question_count=raw_features.get("question_count", 0),
+                max_tokens_requested=raw_features.get("max_tokens_requested", 0),
+                stream_flag=raw_features.get("is_stream", False),
+                complexity_signal_count=feature_values.get("complexity_signal_count", 0),
+                error_signal_count=feature_values.get("error_signal_count", 0),
+                matched_rule_count=len(route_info.get("legacy_rule_matches", [])),
+                hour_of_day_utc=raw_features.get("hour_of_day_utc", 0),
+                tier1_health_score=router_context.get("tier1_health_score"),
+                tier2_health_score=router_context.get("tier2_health_score"),
+                tier3_health_score=router_context.get("tier3_health_score"),
+            )
+            shadow_decision = self.shadow_policy.decide(request_body, route_info, feature_snapshot)
+            log_entry["shadow_policy_decision"] = {
+                "enabled": shadow_decision.enabled,
+                "mode": shadow_decision.mode,
+                "candidate_tier": shadow_decision.candidate_tier,
+                "propensity": shadow_decision.propensity,
+                "exclusion_reason": shadow_decision.exclusion_reason,
+                "hard_exclusions_triggered": shadow_decision.hard_exclusions_triggered,
+            }
+
+        # --- Redacted request preview ---
+        if self.redactor is not None:
+            redacted = self.redactor.redact_request_context(request_body)
+            log_entry["redacted_preview"] = redacted
 
         if api_format == "anthropic":
             return await self._forward_to_anthropic(
@@ -229,7 +358,7 @@ class StreamProxy:
                 provider_cfg = self.config.get_provider(m["provider"])
                 if not provider_cfg or provider_cfg.get("api_format") != "anthropic":
                     continue
-                result = await self._attempt_anthropic(m, request_body, is_stream, log_entry)
+                result = await self._attempt_anthropic(m, request_body, is_stream, log_entry, failed_model)
                 if result is not None:
                     return result
 
@@ -245,13 +374,13 @@ class StreamProxy:
                     if not provider_cfg or provider_cfg.get("api_format") != "anthropic":
                         continue
                     logger.info(f"Cross-tier fallback: {m['id']} ({lower_tier})")
-                    result = await self._attempt_anthropic(m, request_body, is_stream, log_entry)
+                    result = await self._attempt_anthropic(m, request_body, is_stream, log_entry, failed_model)
                     if result is not None:
                         return result
 
         return None
 
-    async def _attempt_anthropic(self, model_entry: dict, request_body: dict, is_stream: bool, log_entry: dict):
+    async def _attempt_anthropic(self, model_entry: dict, request_body: dict, is_stream: bool, log_entry: dict, failed_model: str):
         """Try forwarding to a specific model via Anthropic format."""
         provider_cfg = self.config.get_provider(model_entry["provider"])
         if not provider_cfg:

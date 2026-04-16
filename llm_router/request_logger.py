@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,6 +19,9 @@ class RequestLogger:
         self.flush_interval = config.get("flush_interval_seconds", 2)
         self.flush_batch = config.get("flush_batch_size", 50)
         self.retention_days = config.get("retention_days", 30)
+        self.archive_dir_name = config.get("archive_dir", "archive")
+        self.auto_archive_count = config.get("auto_archive_count", 10000)
+        self.auto_archive_days = config.get("auto_archive_days", 7)
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
         self._running = False
@@ -51,6 +55,72 @@ class RequestLogger:
         if not self.enabled or not self._queue:
             return
         self._queue.put_nowait(entry)
+
+    def archive_logs(self) -> dict:
+        """Move all current log files to the archive directory.
+
+        Returns:
+            dict: {"archived": [filenames], "skipped": [filenames], "total_archived": N}
+        """
+        if not self.enabled:
+            return {"archived": [], "skipped": [], "total_archived": 0}
+
+        archive_dir = self.log_dir / self.archive_dir_name
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        archived = []
+        skipped = []
+        for path in sorted(self.log_dir.glob("requests-*.jsonl")):
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
+            dest = archive_dir / path.name
+            if dest.exists():
+                skipped.append(path.name)
+                continue
+            shutil.move(str(path), str(dest))
+            archived.append(path.name)
+
+        return {
+            "archived": archived,
+            "skipped": skipped,
+            "total_archived": len(archived),
+        }
+
+    def should_auto_archive(self) -> tuple[bool, str]:
+        """Check if auto-archive conditions are met.
+
+        Returns:
+            tuple: (should_archive, reason)
+        """
+        entries = self._read_all_entries()
+        total = len(entries)
+
+        if total >= self.auto_archive_count:
+            return True, f"entry count {total} >= {self.auto_archive_count}"
+
+        if entries:
+            oldest = min(entries, key=lambda e: e.get("timestamp", ""))
+            ts = oldest.get("timestamp", "")
+            if ts:
+                try:
+                    oldest_time = datetime.fromisoformat(ts).timestamp()
+                    age_days = (datetime.now(timezone.utc).timestamp() - oldest_time) / 86400
+                    if age_days >= self.auto_archive_days:
+                        return True, f"oldest entry age {age_days:.1f} days >= {self.auto_archive_days} days"
+                except (ValueError, OSError):
+                    pass
+
+        return False, ""
+
+    def _auto_archive_if_needed(self):
+        """Check and perform auto-archive if conditions are met."""
+        if not self.enabled:
+            return
+        should, reason = self.should_auto_archive()
+        if should:
+            logger.info(f"Auto-archive triggered: {reason}")
+            result = self.archive_logs()
+            logger.info(f"Auto-archived {result['total_archived']} files")
 
     def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None) -> dict:
         """Read paginated entries from log files.
@@ -253,6 +323,7 @@ class RequestLogger:
                         break
 
                 self._write_batch(batch)
+                self._auto_archive_if_needed()
 
             except asyncio.CancelledError:
                 raise
@@ -288,7 +359,10 @@ class RequestLogger:
 
     def _read_all_entries(self) -> list[dict]:
         entries = []
+        archive_dir = self.log_dir / self.archive_dir_name
         for path in sorted(self.log_dir.glob("requests-*.jsonl")):
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
             entries.extend(self._read_entries_from_file(path))
         return entries
 
@@ -297,8 +371,11 @@ class RequestLogger:
         entries = []
         if not self.log_dir.exists():
             return entries
+        archive_dir = self.log_dir / self.archive_dir_name
         cutoff = datetime.now(timezone.utc).timestamp() - hours * 3600
         for path in sorted(self.log_dir.glob("requests-*.jsonl")):
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
             for entry in self._read_entries_from_file(path):
                 ts = entry.get("timestamp", "")
                 if ts:

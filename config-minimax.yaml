@@ -75,7 +75,7 @@ server:
   log_level: "info"
 
 # ===== ML Router =====
-ml_router:
+ml_routing:
   enabled: false
   manifest_path: "./models/manifest.json"
 
