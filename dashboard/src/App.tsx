@@ -38,6 +38,7 @@ import { StatusCodeDistribution } from './components/StatusCodeDistribution'
 import { TokenConsumptionPanel } from './components/TokenConsumptionPanel'
 import { ConversationLengthPanel } from './components/ConversationLengthPanel'
 import { TierConstraintMonitor } from './components/TierConstraintMonitor'
+import { ErrorPatternPanel } from './components/ErrorPatternPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -387,6 +388,7 @@ function App() {
               <TokenConsumptionPanel entries={allEntries} />
               <ConversationLengthPanel entries={allEntries} />
               <TierConstraintMonitor entries={allEntries} />
+              <ErrorPatternPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
