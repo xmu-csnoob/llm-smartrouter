@@ -29,6 +29,7 @@ import { RoutingMethodDistribution } from './components/RoutingMethodDistributio
 import { RoutingMethodQualityPanel } from './components/RoutingMethodQualityPanel'
 import { RecursiveDepthMonitor } from './components/RecursiveDepthMonitor'
 import { TierFloorBreachPanel } from './components/TierFloorBreachPanel'
+import { SemanticSignalBarStrip } from './components/SemanticSignalBarStrip'
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
 import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
@@ -448,6 +449,7 @@ function App() {
               <RoutingMethodQualityPanel entries={allEntries} />
               <RecursiveDepthMonitor entries={allEntries} />
               <TierFloorBreachPanel entries={allEntries} />
+              <SemanticSignalBarStrip entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
