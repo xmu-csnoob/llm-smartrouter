@@ -10,6 +10,7 @@ import { RoutingDecisionDrawer } from './components/RoutingDecisionDrawer'
 import { TierConfusionMatrix } from './components/TierConfusionMatrix'
 import { ErrorBurstDetector } from './components/ErrorBurstDetector'
 import { TokenEstimateHistogram } from './components/TokenEstimateHistogram'
+import { TierHealthTimeline } from './components/TierHealthTimeline'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -353,6 +354,9 @@ function App() {
               </GSPanel>
               <GSPanel panelId="token-histogram" title="Token Distribution" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TokenEstimateHistogram entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="health-timeline" title="Model Health Timeline" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierHealthTimeline entries={allEntries} />
               </GSPanel>
             </div>
           </div>

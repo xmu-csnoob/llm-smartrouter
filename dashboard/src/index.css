@@ -1270,6 +1270,7 @@
 .analysis-grid .gs-panel:nth-child(3) { animation-delay: 240ms; }
 .analysis-grid .gs-panel:nth-child(4) { animation-delay: 320ms; }
 .analysis-grid .gs-panel:nth-child(5) { animation-delay: 400ms; }
+.analysis-grid .gs-panel:nth-child(6) { animation-delay: 480ms; }
 
 /* ═══════════════════════════════════════
    MISC UTILITIES
