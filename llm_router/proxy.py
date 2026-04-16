@@ -151,7 +151,6 @@ class StreamProxy:
                     content={"error": reason, "type": "rate_limit_exceeded"},
                     headers=headers,
                 )
-            self.rate_limiter.record(client_api_key)
 
         is_stream = request_body.get("stream", False)
         requested_model = request_body.get("model", "auto")
