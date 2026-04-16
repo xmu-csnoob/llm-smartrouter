@@ -230,7 +230,7 @@ export function DifficultyHeatmapPanel({ entries }: { entries: LogEntry[] }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: `hsl(225 45% 6%)`,
-                    border: `1px solid ${tierCol}${Math.round(intensity * 40).toString(16).padStart(2, '0')}`,
+                    border: `1px solid ${tierCol} / ${(intensity * 0.4).toFixed(2)}`,
                     borderRadius: 3,
                     padding: '3px 2px',
                     minHeight: 38,
@@ -242,7 +242,7 @@ export function DifficultyHeatmapPanel({ entries }: { entries: LogEntry[] }) {
                       <div style={{
                         position: 'absolute',
                         inset: 0,
-                        background: `radial-gradient(ellipse at center, ${tierCol}${Math.round(intensity * 25).toString(16).padStart(2, '0')} 0%, transparent 70%)`,
+                        background: `radial-gradient(ellipse at center, ${tierCol} / ${(intensity * 0.25).toFixed(2)} 0%, transparent 70%)`,
                         pointerEvents: 'none',
                       }} />
                     )}
