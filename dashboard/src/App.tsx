@@ -8,7 +8,23 @@ import { SemanticDistributionChart } from './components/SemanticDistributionChar
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
-import { LayoutDashboard, Database, Archive, Globe } from 'lucide-react'
+import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
+
+function Clock() {
+  const [time, setTime] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--muted-foreground)' }}>
+      <Radio size={8} style={{ color: 'var(--primary)', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
+      <span>{time.getFullYear()}-{pad(time.getMonth()+1)}-{pad(time.getDate())}</span>
+      <span style={{ color: 'var(--primary)', marginLeft: '0.25rem' }}>{pad(time.getHours())}:{pad(time.getMinutes())}:{pad(time.getSeconds())}</span>
+    </div>
+  )
+}
 
 type NavView = 'overview' | 'logs' | 'archive'
 
@@ -161,12 +177,14 @@ function App() {
           </button>
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <Clock />
           <button
             onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
             className="lang-toggle"
+            style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '4px' }}
           >
-            <Globe size={12} style={{ display: 'inline', marginRight: '4px' }} />
+            <Globe size={10} />
             {locale === 'en' ? '中文' : 'EN'}
           </button>
         </div>
@@ -239,16 +257,20 @@ function App() {
                     ← {t('app.overview')}
                   </button>
                 )}
-                <h1 className="text-lg font-semibold tracking-tight">
+                <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>
                   {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : t('app.title')}
                 </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginLeft: '0.5rem', padding: '0.2rem 0.625rem', background: 'hsl(145 65% 45% / 0.1)', border: '1px solid hsl(145 65% 45% / 0.25)', borderRadius: '4px', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.1em', color: 'hsl(145 65% 60%)' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'hsl(145 65% 55%)', boxShadow: '0 0 6px hsl(145 65% 55%)', animation: 'pulse-dot 2.5s ease-in-out infinite', display: 'inline-block' }} />
+                  NOMINAL
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={refreshAll}
-                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-border hover:bg-muted transition-colors"
+                  style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
                 >
-                  ↻ Refresh
+                  <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
                 </button>
               </div>
             </header>

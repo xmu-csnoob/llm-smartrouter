@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { useI18n } from '@/i18n'
 import type { Stats, ModelStats } from '@/hooks/useApi'
 import { archiveLogs } from '@/hooks/useApi'
-import { Activity, AlertTriangle, ArrowDownUp, CheckCircle, Database } from 'lucide-react'
+import { useI18n } from '@/i18n'
 
 interface Props {
   stats: Stats | null
@@ -22,7 +21,6 @@ export function StatsCards({ stats, onRefresh }: Props) {
   const errorCount = stats?.errors ?? 0
   const fallbackCount = stats?.fallbacks ?? 0
 
-  // Schema v3 coverage
   const featureSnapshotCount = stats?.feature_snapshot_count ?? 0
   const schemaV3Coverage = total > 0 ? Math.round((featureSnapshotCount / total) * 100) : 0
   const topIntentType = stats?.task_types
@@ -49,9 +47,8 @@ export function StatsCards({ stats, onRefresh }: Props) {
     <div className="stat-row" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
       {/* Total Requests */}
       <div className="stat-block">
-        <div className="stat-block-accent" />
         <div className="stat-block-label">
-          <Activity size={10} />
+          <span className="label-dot" />
           {t('stats.totalRequests')}
         </div>
         <div className="stat-block-value">
@@ -63,12 +60,11 @@ export function StatsCards({ stats, onRefresh }: Props) {
 
       {/* Avg Latency */}
       <div className="stat-block">
-        <div className="stat-block-accent" style={{ background: 'hsl(200 75% 45%)' }} />
         <div className="stat-block-label">
-          <Activity size={10} />
+          <span className="label-dot" style={{ background: 'hsl(200 75% 55%)', boxShadow: '0 0 6px hsl(200 75% 55% / 0.4)' }} />
           {t('stats.avgLatency')}
         </div>
-        <div className="stat-block-value" style={{ color: 'hsl(200 75% 45%)' }}>
+        <div className="stat-block-value" style={{ color: 'hsl(200 75% 55%)' }}>
           {avgLatency}
           <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '2px' }}>ms</span>
         </div>
@@ -79,12 +75,11 @@ export function StatsCards({ stats, onRefresh }: Props) {
 
       {/* Fallback Rate */}
       <div className="stat-block">
-        <div className="stat-block-accent" style={{ background: 'hsl(142 65% 40%)' }} />
         <div className="stat-block-label">
-          <ArrowDownUp size={10} />
+          <span className="label-dot" style={{ background: 'hsl(145 65% 55%)', boxShadow: '0 0 6px hsl(145 65% 55% / 0.4)' }} />
           {t('stats.fallbackRate')}
         </div>
-        <div className="stat-block-value" style={{ color: 'hsl(142 65% 40%)' }}>
+        <div className="stat-block-value" style={{ color: 'hsl(145 65% 55%)' }}>
           {fallbackRate !== '—' ? fallbackRate : '—'}
           {fallbackRate !== '—' && <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '2px' }}>%</span>}
         </div>
@@ -95,12 +90,14 @@ export function StatsCards({ stats, onRefresh }: Props) {
 
       {/* Error Rate */}
       <div className="stat-block">
-        <div className="stat-block-accent" style={{ background: errorCount > 0 ? 'hsl(0 72% 50%)' : 'hsl(142 65% 40%)' }} />
         <div className="stat-block-label">
-          {errorCount > 0 ? <AlertTriangle size={10} /> : <CheckCircle size={10} />}
+          {errorCount > 0
+            ? <span className="label-dot" style={{ background: 'hsl(0 72% 60%)', boxShadow: '0 0 6px hsl(0 72% 60% / 0.4)', animation: 'none' }} />
+            : <span className="label-dot" style={{ background: 'hsl(145 65% 55%)', boxShadow: '0 0 6px hsl(145 65% 55% / 0.4)' }} />
+          }
           {t('stats.errorRate')}
         </div>
-        <div className="stat-block-value" style={{ color: errorCount > 0 ? 'hsl(0 72% 50%)' : 'hsl(142 65% 40%)' }}>
+        <div className="stat-block-value" style={{ color: errorCount > 0 ? 'hsl(0 72% 60%)' : 'hsl(145 65% 55%)' }}>
           {errorRate !== '—' ? errorRate : '—'}
           {errorRate !== '—' && <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '2px' }}>%</span>}
         </div>
@@ -111,8 +108,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
           <button
             onClick={handleArchive}
             disabled={clearing}
-            className="px-2.5 py-1 text-[10px] font-semibold rounded border border-border hover:bg-muted transition-colors disabled:opacity-50"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            style={{ padding: '0.25rem 0.625rem', fontSize: '0.625rem', fontWeight: 600, borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--muted)', color: 'var(--muted-foreground)', cursor: clearing ? 'not-allowed' : 'pointer', opacity: clearing ? 0.5 : 1, transition: 'all 150ms', fontFamily: 'var(--font-mono)' }}
           >
             {clearing ? '...' : t('stats.clearLogs')}
           </button>
@@ -121,12 +117,11 @@ export function StatsCards({ stats, onRefresh }: Props) {
 
       {/* Data Collection */}
       <div className="stat-block">
-        <div className="stat-block-accent" style={{ background: 'hsl(280 60% 55%)' }} />
         <div className="stat-block-label">
-          <Database size={10} />
+          <span className="label-dot" style={{ background: 'hsl(260 65% 65%)', boxShadow: '0 0 6px hsl(260 65% 65% / 0.4)' }} />
           {t('stats.dataCollection')}
         </div>
-        <div className="stat-block-value" style={{ color: 'hsl(280 60% 55%)', fontSize: '1.25rem' }}>
+        <div className="stat-block-value" style={{ color: 'hsl(260 65% 65%)', fontSize: '1.25rem' }}>
           {schemaV3Coverage}<span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '2px' }}>%</span>
         </div>
         <div className="stat-block-sub">
