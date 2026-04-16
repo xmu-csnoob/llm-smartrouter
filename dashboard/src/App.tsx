@@ -27,6 +27,7 @@ import { HourlyIntentComposition } from './components/HourlyIntentComposition'
 import { RecentFallbackFeed } from './components/RecentFallbackFeed'
 import { RoutingMethodDistribution } from './components/RoutingMethodDistribution'
 import { RoutingMethodQualityPanel } from './components/RoutingMethodQualityPanel'
+import { RecursiveDepthMonitor } from './components/RecursiveDepthMonitor'
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
 import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
@@ -444,6 +445,7 @@ function App() {
               <DifficultyHeatmapPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <RoutingMethodQualityPanel entries={allEntries} />
+              <RecursiveDepthMonitor entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
