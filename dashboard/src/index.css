@@ -1291,6 +1291,11 @@
   animation-play-state: paused;
 }
 
+@keyframes thermo-critical {
+  from { opacity: 1; box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+  to   { opacity: 0.7; box-shadow: 0 0 4px currentColor; }
+}
+
 .gs-panel {
   animation: fade-in-up 400ms ease-out both;
 }
