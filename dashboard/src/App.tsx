@@ -33,6 +33,7 @@ import { RoutingConfidenceTimeline } from './components/RoutingConfidenceTimelin
 import { OutcomeHeatmap } from './components/OutcomeHeatmap'
 import { QualityGuardMonitor } from './components/QualityGuardMonitor'
 import { TierSelectionStability } from './components/TierSelectionStability'
+import { ModelRoutingDelta } from './components/ModelRoutingDelta'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -377,6 +378,7 @@ function App() {
               <OutcomeHeatmap entries={allEntries} />
               <QualityGuardMonitor entries={allEntries} />
               <TierSelectionStability entries={allEntries} />
+              <ModelRoutingDelta entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
