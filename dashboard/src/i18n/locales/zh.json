@@ -47,10 +47,13 @@
     "modelDistribution": "模型分布",
     "noData": "暂无数据",
     "latencyTrend": "Latency 趋势",
+    "intentDistribution": "意图分布",
+    "difficultyDistribution": "难度分布",
     "request": "请求",
     "requests": "{value} 次请求 (avg {avgLatency}ms)",
     "requestLabel": "请求 {label} — {model}",
-    "requestLabelShort": "请求 {label}"
+    "requestLabelShort": "请求 {label}",
+    "intentDifficulty": "意图 & 难度"
   },
   "analysis": {
     "title": "日志分析",

@@ -4,6 +4,7 @@ import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
+import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe } from 'lucide-react'
@@ -285,6 +286,16 @@ function App() {
                     </div>
                     <div className="gs-panel-body">
                       <AnalysisPanel />
+                    </div>
+                  </div>
+
+                  {/* Intent & Difficulty Distribution */}
+                  <div className="gs-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">{t('chart.intentDifficulty')}</span>
+                    </div>
+                    <div className="gs-panel-body">
+                      <SemanticDistributionChart stats={stats} />
                     </div>
                   </div>
                 </div>

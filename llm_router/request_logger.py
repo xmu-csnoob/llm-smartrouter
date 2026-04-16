@@ -185,6 +185,8 @@ class RequestLogger:
                 "feature_snapshot_count": 0,
                 "selected_tier_count": 0,
                 "observability_only_count": 0,
+                "intent_distribution": {},
+                "difficulty_distribution": {},
             }
 
         total = len(entries)
@@ -208,6 +210,8 @@ class RequestLogger:
         feature_snapshot_count = 0
         selected_tier_count = 0
         observability_only_count = 0
+        intent_distribution = {}
+        difficulty_distribution = {}
         for e in entries:
             m = e.get("routed_model", "unknown")
             if m not in models:
@@ -255,6 +259,14 @@ class RequestLogger:
             if task_type:
                 task_types[task_type] = task_types.get(task_type, 0) + 1
 
+            sem = e.get("semantic_features") or {}
+            intent_val = sem.get("intent")
+            if intent_val:
+                intent_distribution[intent_val] = intent_distribution.get(intent_val, 0) + 1
+            difficulty_val = sem.get("difficulty")
+            if difficulty_val:
+                difficulty_distribution[difficulty_val] = difficulty_distribution.get(difficulty_val, 0) + 1
+
             for feature in e.get("detected_features", []):
                 feature_counts[feature] = feature_counts.get(feature, 0) + 1
 
@@ -300,6 +312,8 @@ class RequestLogger:
             "feature_snapshot_count": feature_snapshot_count,
             "selected_tier_count": selected_tier_count,
             "observability_only_count": observability_only_count,
+            "intent_distribution": intent_distribution,
+            "difficulty_distribution": difficulty_distribution,
         }
 
     async def _flush_loop(self):
