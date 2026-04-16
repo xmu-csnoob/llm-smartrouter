@@ -16,6 +16,7 @@ import { TierRadar } from './components/TierRadar'
 import { ShadowDiscrepancyFeed } from './components/ShadowDiscrepancyFeed'
 import { IntentDriftTicker } from './components/IntentDriftTicker'
 import { TierCapacityThermometer } from './components/TierCapacityThermometer'
+import { CostAttributionMeter } from './components/CostAttributionMeter'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -347,6 +348,7 @@ function App() {
             <div className="analysis-grid">
               <IntentDriftTicker stats={stats} />
               <TierCapacityThermometer stats={stats} />
+              <CostAttributionMeter stats={stats} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>
