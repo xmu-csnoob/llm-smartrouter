@@ -84,8 +84,8 @@ export function RoutingConfidenceTimeline({ entries }: Props) {
   const hasData = buckets.some(b => b.total > 0)
   const maxVal = Math.max(...buckets.map(b => b.total), 1)
 
-  const isRising = mlTrend.length >= 2 && mlTrend[0] < mlTrend[mlTrend.length - 1]
-  const trendLabel = isRising ? '↑' : mlTrend.length >= 2 && mlTrend[0] > mlTrend[mlTrend.length - 1] ? '↓' : '→'
+  const isRising = mlTrend.length >= 2 && mlTrend[0] > mlTrend[mlTrend.length - 1]
+  const trendLabel = isRising ? '↑' : mlTrend.length >= 2 && mlTrend[0] < mlTrend[mlTrend.length - 1] ? '↓' : '→'
 
   return (
     <div
