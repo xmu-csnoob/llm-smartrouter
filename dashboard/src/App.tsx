@@ -60,6 +60,7 @@ import { IntentDifficultyCorrelationMatrix } from './components/IntentDifficulty
 import { MLFeatureAttributionMatrix } from './components/MLFeatureAttributionMatrix'
 import { RoutingRuleLeaderboard } from './components/RoutingRuleLeaderboard'
 import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
+import { ErrorMessageCluster } from './components/ErrorMessageCluster'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -430,6 +431,7 @@ function App() {
               <IntentDifficultyCorrelationMatrix entries={allEntries} />
               <MLFeatureAttributionMatrix entries={allEntries} />
               <RoutingRuleLeaderboard entries={allEntries} />
+              <ErrorMessageCluster entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
