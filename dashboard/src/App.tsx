@@ -30,6 +30,7 @@ import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
 import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
 import { RoutingConfidenceTimeline } from './components/RoutingConfidenceTimeline'
+import { OutcomeHeatmap } from './components/OutcomeHeatmap'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -371,6 +372,7 @@ function App() {
               <HourlyIntentComposition entries={allEntries} />
               <RecentFallbackFeed entries={allEntries} />
               <RoutingConfidenceTimeline entries={allEntries} />
+              <OutcomeHeatmap entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
