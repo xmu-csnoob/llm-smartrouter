@@ -1,5 +1,5 @@
 import type { LogEntry } from '@/hooks/useApi'
-import { X } from 'lucide-react'
+import { X, AlertTriangle } from 'lucide-react'
 
 interface Props {
   entry: LogEntry | null
@@ -25,6 +25,31 @@ function FeatureBar({ label, value, max = 1, color = 'hsl(200 75% 55%)' }: { lab
   )
 }
 
+function TierScoreBar({ tier, score, winner }: { tier: string; score: number; winner: boolean }) {
+  const color = TIER_COLORS[tier] || 'var(--muted-foreground)'
+  const pct = Math.min(100, score * 100)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 6 }}>
+      <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', fontWeight: winner ? 700 : 400, color: winner ? color : 'var(--muted-foreground)', width: 32, flexShrink: 0 }}>
+        {tier.toUpperCase()}
+      </span>
+      <div style={{ flex: 1, height: 6, background: 'var(--muted)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{
+          width: `${pct}%`,
+          height: '100%',
+          background: winner ? color : `color-mix(in srgb, ${color} 40%, var(--muted))`,
+          borderRadius: 3,
+          transition: 'width 500ms cubic-bezier(0.34, 1.2, 0.64, 1)',
+          boxShadow: winner ? `0 0 8px ${color}60` : 'none',
+        }} />
+      </div>
+      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: winner ? 700 : 400, color: winner ? color : 'var(--muted-foreground)', width: 28, textAlign: 'right' }}>
+        {score.toFixed(3)}
+      </span>
+    </div>
+  )
+}
+
 export function RoutingDecisionDrawer({ entry, onClose }: Props) {
   if (!entry) return null
 
@@ -32,6 +57,13 @@ export function RoutingDecisionDrawer({ entry, onClose }: Props) {
   const sp = entry.shadow_policy_decision
   const rc = entry.router_context as Record<string, unknown> | undefined
   const tierColor = TIER_COLORS[entry.routed_tier] || 'var(--muted-foreground)'
+  const hasDiscrepancy = entry.selected_tier !== entry.routed_tier
+
+  // Tier scores from router context (backend may populate)
+  const tierScores = rc?.tier_scores as Record<string, number> | undefined
+  const winnerTier = tierScores
+    ? Object.entries(tierScores).sort((a, b) => b[1] - a[1])[0]?.[0]
+    : null
 
   return (
     <div
@@ -81,10 +113,73 @@ export function RoutingDecisionDrawer({ entry, onClose }: Props) {
         </div>
 
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+          {/* Routing Reason */}
+          {(entry.matched_rule || entry.matched_by) && (
+            <section>
+              <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Routing Reason</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
+                {entry.matched_rule && (
+                  <span style={{
+                    fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 700,
+                    padding: '0.2rem 0.5rem', borderRadius: 5,
+                    background: 'hsl(185 80% 50% / 0.12)',
+                    border: '1px solid hsl(185 80% 50% / 0.3)',
+                    color: 'hsl(185 80% 55%)',
+                  }}>
+                    {entry.matched_rule}
+                  </span>
+                )}
+                {entry.matched_by && (
+                  <span style={{
+                    fontSize: 9, fontFamily: 'var(--font-mono)',
+                    padding: '0.2rem 0.5rem', borderRadius: 5,
+                    background: 'hsl(280 65% 60% / 0.12)',
+                    border: '1px solid hsl(280 65% 60% / 0.3)',
+                    color: 'hsl(280 65% 65%)',
+                  }}>
+                    via {entry.matched_by}
+                  </span>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Tier Discrepancy Banner */}
+          {hasDiscrepancy && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 8,
+              background: 'hsl(38 92% 55% / 0.08)',
+              border: '1px solid hsl(38 92% 55% / 0.3)',
+            }}>
+              <AlertTriangle size={12} style={{ color: 'hsl(38 92% 60%)', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'hsl(38 92% 65%)', fontWeight: 700, marginBottom: 2 }}>
+                  TIER OVERRIDE
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 700, color: TIER_COLORS[entry.selected_tier] || tierColor }}>
+                    {entry.selected_tier.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)' }}>→</span>
+                  <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 700, color: TIER_COLORS[entry.routed_tier] || tierColor }}>
+                    {entry.routed_tier.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)', marginLeft: 'auto' }}>
+                    {entry.quality_guard_applied ? 'quality guard' : 'ml override'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tier Result */}
           <section>
             <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Tier Result</div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{
                 padding: '0.3rem 0.75rem',
                 borderRadius: 6,
@@ -119,6 +214,23 @@ export function RoutingDecisionDrawer({ entry, onClose }: Props) {
               ))}
             </div>
           </section>
+
+          {/* Tier Scores (if backend populates tier_scores in router_context) */}
+          {tierScores && (
+            <section>
+              <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Tier Scores</div>
+              <div style={{ background: 'var(--muted)', borderRadius: 8, padding: '0.75rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+                {['tier1', 'tier2', 'tier3'].map(tier => (
+                  <TierScoreBar
+                    key={tier}
+                    tier={tier}
+                    score={tierScores[tier] || 0}
+                    winner={tier === winnerTier}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Semantic Features */}
           {sf && (
@@ -207,14 +319,16 @@ export function RoutingDecisionDrawer({ entry, onClose }: Props) {
             <section>
               <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Router Context</div>
               <div style={{ background: 'var(--muted)', borderRadius: 8, padding: '0.75rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                {Object.entries(rc).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)' }}>{k}</span>
-                    <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--foreground)' }}>
-                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(rc)
+                  .filter(([k]) => k !== 'tier_scores') // tier_scores shown in dedicated section
+                  .map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--muted-foreground)' }}>{k}</span>
+                      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--foreground)' }}>
+                        {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </section>
           )}
