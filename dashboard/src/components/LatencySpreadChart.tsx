@@ -237,11 +237,12 @@ export function LatencySpreadChart({ entries }: { entries: LogEntry[] }) {
               return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
             }).join(' ')
 
-            const p90Path = [...buckets].reverse().map((b, i) => {
+            // P90 closing path: walk backwards from last bucket to first
+            const p90ClosePath = [...buckets].reverse().map((b, i) => {
               const x = xScale(buckets.length - 1 - i)
               const y = yScale(b.p90)
-              return `L ${x} ${y}`
-            }).join(' ') + ' Z'
+              return `${i === 0 ? 'L' : 'L'} ${x} ${y}`
+            }).join(' ')
 
             const p50Path = buckets.map((b, i) => {
               const x = xScale(i)
@@ -259,7 +260,7 @@ export function LatencySpreadChart({ entries }: { entries: LogEntry[] }) {
               <g key={s.tier}>
                 {/* P10-P90 fill band */}
                 <path
-                  d={p10Path + p90Path.split('').reverse().join('').replace(/^[LZ]/, 'L').replace(/Z$/, '')}
+                  d={p10Path + p90ClosePath + ' Z'}
                   fill={tc}
                   opacity={0.06}
                 />
