@@ -25,6 +25,7 @@ import { TierRoutingComparison } from './components/TierRoutingComparison'
 import { RoutingErrorHotspotTable } from './components/RoutingErrorHotspotTable'
 import { HourlyIntentComposition } from './components/HourlyIntentComposition'
 import { RecentFallbackFeed } from './components/RecentFallbackFeed'
+import { RoutingMethodDistribution } from './components/RoutingMethodDistribution'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -365,6 +366,7 @@ function App() {
               <RoutingErrorHotspotTable entries={allEntries} />
               <HourlyIntentComposition entries={allEntries} />
               <RecentFallbackFeed entries={allEntries} />
+              <RoutingMethodDistribution entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>

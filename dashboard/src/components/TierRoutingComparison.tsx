@@ -190,8 +190,12 @@ export function TierRoutingComparison({ entries }: Props) {
     for (const entry of entries) {
       const diff = (entry.semantic_features?.difficulty ?? entry.task_type ?? 'general') as Difficulty
       const bucket = buckets[diff] ?? buckets.general
-      if (entry.matched_by === 'ml') bucket.ml.push(entry)
-      else bucket.rule.push(entry)
+      // matched_by values: "scoring", "legacy-rule+scoring" = ML path;
+      // "keyword", "expr", "default" = rule path; "passthrough" = explicit, not routed
+      const matchedBy = entry.matched_by ?? ''
+      const isML = matchedBy === 'scoring' || matchedBy === 'legacy-rule+scoring'
+      if (isML) bucket.ml.push(entry)
+      else if (matchedBy && matchedBy !== 'passthrough') bucket.rule.push(entry)
     }
 
     const mlEntries: LogEntry[] = []
