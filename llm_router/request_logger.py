@@ -1,6 +1,7 @@
 """Request logger — async queue + background flush to daily JSONL files."""
 
 import asyncio
+import hashlib
 import json
 import logging
 import shutil
@@ -8,6 +9,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger("llm_router")
+
+
+def _hash_api_key(key: str) -> str:
+    """Hash API key for safe display, showing first 8 chars of prefix."""
+    if key == "anonymous" or not key:
+        return key
+    h = hashlib.sha256(key.encode()).hexdigest()[:16]
+    return f"key_{h[:8]}"
 
 
 class RequestLogger:
@@ -301,6 +310,79 @@ class RequestLogger:
             "selected_tier_count": selected_tier_count,
             "observability_only_count": observability_only_count,
         }
+
+    def get_key_stats(self, hours: int = 24) -> dict:
+        """Aggregate usage stats per API key from recent log entries.
+
+        Returns:
+            dict: { "window_hours": N, "keys": { "<api_key>": { count, errors, error_rate,
+                      avg_latency_ms, models: {model: count}, tiers: {tier: count},
+                      total_input_tokens, total_output_tokens, total_cost }, ... } }
+        """
+        if not self.enabled:
+            return {"window_hours": hours, "keys": {}}
+
+        entries = self._read_recent_entries(hours)
+        key_map: dict[str, dict] = {}
+
+        for e in entries:
+            key = e.get("client_api_key") or "anonymous"
+            if key not in key_map:
+                key_map[key] = {
+                    "count": 0,
+                    "errors": 0,
+                    "total_latency": 0,
+                    "latency_samples": 0,
+                    "models": {},
+                    "tiers": {},
+                    "total_input_tokens": 0,
+                    "total_output_tokens": 0,
+                    "total_cost": 0.0,
+                }
+
+            key_map[key]["count"] += 1
+            if e.get("status") != 200:
+                key_map[key]["errors"] += 1
+            if e.get("latency_ms") is not None:
+                key_map[key]["total_latency"] += e["latency_ms"]
+                key_map[key]["latency_samples"] += 1
+
+            model = e.get("routed_model")
+            if model:
+                key_map[key]["models"][model] = key_map[key]["models"].get(model, 0) + 1
+
+            tier = e.get("routed_tier")
+            if tier:
+                key_map[key]["tiers"][tier] = key_map[key]["tiers"].get(tier, 0) + 1
+
+            inp = e.get("input_tokens")
+            out = e.get("output_tokens")
+            cost = e.get("cost")
+            if inp is not None:
+                key_map[key]["total_input_tokens"] += inp
+            if out is not None:
+                key_map[key]["total_output_tokens"] += out
+            if cost is not None:
+                key_map[key]["total_cost"] += cost
+
+        result_keys = {}
+        for key, data in key_map.items():
+            c = data["count"]
+            err = data["errors"]
+            ls = data["latency_samples"]
+            result_keys[_hash_api_key(key)] = {
+                "count": c,
+                "errors": err,
+                "error_rate": round(err / c * 100, 1) if c else 0.0,
+                "avg_latency_ms": round(data["total_latency"] / ls, 1) if ls else None,
+                "models": data["models"],
+                "tiers": data["tiers"],
+                "total_input_tokens": data["total_input_tokens"],
+                "total_output_tokens": data["total_output_tokens"],
+                "total_cost": round(data["total_cost"], 6),
+            }
+
+        return {"window_hours": hours, "keys": result_keys}
 
     async def _flush_loop(self):
         """Background coroutine: periodically flush queue to file."""

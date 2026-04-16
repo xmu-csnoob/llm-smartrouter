@@ -115,7 +115,7 @@ class StreamProxy:
             trust_env=False,
         )
 
-    async def forward_anthropic(self, request_body: dict) -> StreamingResponse | JSONResponse:
+    async def forward_anthropic(self, request_body: dict, client_api_key: str | None = None) -> StreamingResponse | JSONResponse:
         """Forward an Anthropic Messages API request."""
         is_stream = request_body.get("stream", False)
         requested_model = request_body.get("model", "auto")
@@ -162,6 +162,7 @@ class StreamProxy:
             "is_stream": is_stream,
             "status": 200,
             "error": None,
+            "client_api_key": client_api_key,
         }
 
         # --- Schema v3: enrich log entry with semantic features ---

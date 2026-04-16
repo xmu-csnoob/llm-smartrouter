@@ -142,7 +142,8 @@ def create_app(config: RouterConfig) -> FastAPI:
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request):
         body = await request.json()
-        return await proxy.forward_anthropic(body)
+        client_api_key = request.headers.get("x-api-key")
+        return await proxy.forward_anthropic(body, client_api_key=client_api_key)
 
     @app.get("/v1/models")
     async def list_models():
@@ -221,6 +222,11 @@ def create_app(config: RouterConfig) -> FastAPI:
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
         return req_logger.get_stats(hours)
+
+    @app.get("/api/logs/keys")
+    async def key_stats(hours: int = 24):
+        """Per-API-key usage breakdown: request count, error rate, latency, model/tier distribution, token usage, cost."""
+        return req_logger.get_key_stats(hours)
 
     @app.post("/api/logs/archive")
     async def archive_logs():
