@@ -105,6 +105,103 @@ def _build_analysis_snapshot(entries: list[dict]) -> dict:
     }
 
 
+def aggregate_shadow_policy_stats(entries: list[dict], shadow_enabled: bool, hours: int) -> dict:
+    """Aggregate shadow policy statistics from a list of log entries.
+
+    This is a pure function exported for unit testing.
+    """
+    if not entries:
+        return {
+            "window_hours": hours,
+            "shadow_enabled": shadow_enabled,
+            "mode_counts": {},
+            "total_requests": 0,
+            "shadow_requests": 0,
+            "exclusion_count": 0,
+            "exclusion_reasons": {},
+            "forced_lower_tier_count": 0,
+            "forced_tier_transitions": {},
+            "avg_latency_shadow_ms": None,
+            "avg_latency_primary_ms": None,
+            "p50_shadow_ms": None,
+            "p95_shadow_ms": None,
+            "p50_primary_ms": None,
+            "p95_primary_ms": None,
+            "recent_exclusion_events": [],
+        }
+
+    total = len(entries)
+    mode_counts: dict = {}
+    exclusion_count = 0
+    exclusion_reasons: dict = {}
+    forced_lower_tier_count = 0
+    forced_tier_transitions: dict = {}
+    shadow_latencies = []
+    primary_latencies = []
+    recent_exclusion_events = []
+
+    for entry in entries:
+        sp = entry.get("shadow_policy_decision", {})
+        if not sp or not sp.get("enabled"):
+            continue
+
+        mode = sp.get("mode", "unknown")
+        mode_counts[mode] = mode_counts.get(mode, 0) + 1
+
+        if sp.get("exclusion_reason"):
+            exclusion_count += 1
+            reason = sp.get("exclusion_reason", "unknown")
+            exclusion_reasons[reason] = exclusion_reasons.get(reason, 0) + 1
+            recent_exclusion_events.append({
+                "timestamp": entry.get("timestamp"),
+                "reason": reason,
+                "triggered_rules": sp.get("hard_exclusions_triggered", []),
+                "routed_tier": entry.get("routed_tier"),
+            })
+
+        if mode == "forced_lower_tier":
+            forced_lower_tier_count += 1
+            from_tier = entry.get("routed_tier", "")
+            to_tier = sp.get("candidate_tier", "")
+            if from_tier and to_tier:
+                key = f"{from_tier}_to_{to_tier}"
+                forced_tier_transitions[key] = forced_tier_transitions.get(key, 0) + 1
+
+        # Latency tracking: forced_lower_tier = shadow execution
+        latency = entry.get("latency_ms")
+        if latency is not None:
+            if mode == "forced_lower_tier":
+                shadow_latencies.append(latency)
+            else:
+                primary_latencies.append(latency)
+
+    def pct(lst, p):
+        if not lst:
+            return None
+        s = sorted(lst)
+        idx = int(len(s) * p / 100)
+        return round(s[min(idx, len(s) - 1)], 1)
+
+    return {
+        "window_hours": hours,
+        "shadow_enabled": shadow_enabled,
+        "mode_counts": mode_counts,
+        "total_requests": total,
+        "shadow_requests": sum(mode_counts.values()),
+        "exclusion_count": exclusion_count,
+        "exclusion_reasons": exclusion_reasons,
+        "forced_lower_tier_count": forced_lower_tier_count,
+        "forced_tier_transitions": forced_tier_transitions,
+        "avg_latency_shadow_ms": round(sum(shadow_latencies) / len(shadow_latencies), 1) if shadow_latencies else None,
+        "avg_latency_primary_ms": round(sum(primary_latencies) / len(primary_latencies), 1) if primary_latencies else None,
+        "p50_shadow_ms": pct(shadow_latencies, 50),
+        "p95_shadow_ms": pct(shadow_latencies, 95),
+        "p50_primary_ms": pct(primary_latencies, 50),
+        "p95_primary_ms": pct(primary_latencies, 95),
+        "recent_exclusion_events": recent_exclusion_events[-20:],
+    }
+
+
 def create_app(config: RouterConfig) -> FastAPI:
     req_logger = RequestLogger(config.logging_config)
 
@@ -279,96 +376,7 @@ def create_app(config: RouterConfig) -> FastAPI:
     async def shadow_policy_stats(hours: int = 24):
         """Aggregate shadow policy statistics from recent log entries."""
         entries = req_logger.get_entries_for_analysis(hours)
-        if not entries:
-            return {
-                "window_hours": hours,
-                "shadow_enabled": shadow_policy.enabled,
-                "mode_counts": {},
-                "total_requests": 0,
-                "shadow_requests": 0,
-                "exclusion_count": 0,
-                "exclusion_reasons": {},
-                "forced_lower_tier_count": 0,
-                "forced_tier_transitions": {},
-                "avg_latency_shadow_ms": None,
-                "avg_latency_primary_ms": None,
-                "p50_shadow_ms": None,
-                "p95_shadow_ms": None,
-                "p50_primary_ms": None,
-                "p95_primary_ms": None,
-                "recent_exclusion_events": [],
-            }
-
-        total = len(entries)
-        mode_counts: dict = {}
-        exclusion_count = 0
-        exclusion_reasons: dict = {}
-        forced_lower_tier_count = 0
-        forced_tier_transitions: dict = {}
-        shadow_latencies = []
-        primary_latencies = []
-        recent_exclusion_events = []
-
-        for entry in entries:
-            sp = entry.get("shadow_policy_decision", {})
-            if not sp or not sp.get("enabled"):
-                continue
-
-            mode = sp.get("mode", "unknown")
-            mode_counts[mode] = mode_counts.get(mode, 0) + 1
-
-            if sp.get("exclusion_reason"):
-                exclusion_count += 1
-                reason = sp.get("exclusion_reason", "unknown")
-                exclusion_reasons[reason] = exclusion_reasons.get(reason, 0) + 1
-                recent_exclusion_events.append({
-                    "timestamp": entry.get("timestamp"),
-                    "reason": reason,
-                    "triggered_rules": sp.get("hard_exclusions_triggered", []),
-                    "routed_tier": entry.get("routed_tier"),
-                })
-
-            if mode == "forced_lower_tier":
-                forced_lower_tier_count += 1
-                from_tier = entry.get("routed_tier", "")
-                to_tier = sp.get("candidate_tier", "")
-                if from_tier and to_tier:
-                    key = f"{from_tier}_to_{to_tier}"
-                    forced_tier_transitions[key] = forced_tier_transitions.get(key, 0) + 1
-
-            # Latency tracking: forced_lower_tier = shadow execution
-            latency = entry.get("latency_ms")
-            if latency is not None:
-                if mode == "forced_lower_tier":
-                    shadow_latencies.append(latency)
-                else:
-                    primary_latencies.append(latency)
-
-        def pct(lst, p):
-            if not lst:
-                return None
-            s = sorted(lst)
-            idx = int(len(s) * p / 100)
-            return round(s[min(idx, len(s) - 1)], 1)
-
-        return {
-            "window_hours": hours,
-            "shadow_enabled": shadow_policy.enabled,
-            "mode_counts": mode_counts,
-            "total_requests": total,
-            "shadow_requests": sum(mode_counts.values()),
-            "exclusion_count": exclusion_count,
-            "exclusion_reasons": exclusion_reasons,
-            "forced_lower_tier_count": forced_lower_tier_count,
-            "forced_tier_transitions": forced_tier_transitions,
-            "avg_latency_shadow_ms": round(sum(shadow_latencies) / len(shadow_latencies), 1) if shadow_latencies else None,
-            "avg_latency_primary_ms": round(sum(primary_latencies) / len(primary_latencies), 1) if primary_latencies else None,
-            "p50_shadow_ms": pct(shadow_latencies, 50),
-            "p95_shadow_ms": pct(shadow_latencies, 95),
-            "p50_primary_ms": pct(primary_latencies, 50),
-            "p95_primary_ms": pct(primary_latencies, 95),
-            "recent_exclusion_events": recent_exclusion_events[-20:],
-        }
+        return aggregate_shadow_policy_stats(entries, shadow_policy.enabled, hours)
 
     @app.get("/api/logs/replay")
     async def replay_logs(hours: int = 24, limit: int = 100):
