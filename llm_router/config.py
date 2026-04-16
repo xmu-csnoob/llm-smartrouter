@@ -86,6 +86,7 @@ class RouterConfig:
         self.scoring = merge_scoring_config(self._raw.get("scoring"))
         self.server = self._raw.get("server", {})
         self.ml_routing = self._raw.get("ml_routing", {})
+        self.api_keys = self._raw.get("api_keys", {})  # api_key -> {allowed_tiers: [tier1, tier2]}
 
     @property
     def logging_config(self) -> dict:
@@ -134,6 +135,15 @@ class RouterConfig:
                 "fallback_on_error": cfg.get("inference", {}).get("fallback_on_error", True),
             },
             "weights": cfg.get("weights", {"tier1": 2.0, "tier2": 2.0, "tier3": 2.0}),
+        }
+
+    @property
+    def cost_config(self) -> dict:
+        """Return cost estimation config with defaults."""
+        cfg = self._raw.get("cost", {})
+        return {
+            "input_cost_per_million": cfg.get("input_cost_per_million", 3.5),
+            "output_cost_per_million": cfg.get("output_cost_per_million", 18.0),
         }
 
     @property

@@ -3,26 +3,17 @@ const API_BASE = '/api';
 export interface LogEntry {
   request_id: string;
   timestamp: string;
+  client_api_key: string | null;
   requested_model: string;
   estimated_tokens: number;
   message_count: number;
   matched_rule: string;
   matched_by: string;
   selected_tier: string;
-  min_allowed_tier: string | null;
   degraded_to_tier: string | null;
-  quality_guard_applied: boolean;
-  quality_guard_reasons: string[];
   routed_model: string;
   routed_tier: string;
   routed_provider: string;
-  request_preview: string | null;
-  request_context?: {
-    system_preview?: string;
-    message_previews?: Array<{ role: string; text: string }>;
-    message_count?: number;
-    preview_count?: number;
-  } | null;
   is_fallback: boolean;
   fallback_chain: Array<{ model: string; tier: string; error: string }>;
   latency_ms: number | null;
@@ -30,6 +21,43 @@ export interface LogEntry {
   is_stream: boolean;
   status: number;
   error: string | null;
+  observability_only: boolean;
+  task_type: string;
+  detected_features: string[];
+  raw_features?: {
+    estimated_tokens: number;
+    message_count: number;
+    user_message_count: number;
+    assistant_message_count: number;
+    tool_count: number;
+    question_count: number;
+    code_block_count: number;
+    file_path_count: number;
+    stacktrace_count: number;
+    max_tokens_requested: number;
+    input_chars: number;
+    has_system_prompt: boolean;
+    system_prompt_chars: number;
+    is_stream: boolean;
+    is_followup: boolean;
+    hour_of_day_utc: number;
+  };
+  semantic_features?: {
+    intent: string;
+    intent_type: string;
+    difficulty: string;
+    task_domain: string;
+    tool_usage_pattern: string;
+    error_pattern_type: string | null;
+    cross_file_analysis: boolean;
+    recursive_depth: string;
+    multi_turn_depth: string;
+    requires_reasoning: boolean;
+    clarification_needed_score: number;
+    is_followup: boolean;
+  };
+  tier_scores: Record<string, number>;
+  score_breakdown: Record<string, number>;
 }
 
 export interface RecentResponse {

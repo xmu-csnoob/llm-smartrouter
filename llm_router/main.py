@@ -142,7 +142,15 @@ def create_app(config: RouterConfig) -> FastAPI:
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request):
         body = await request.json()
-        return await proxy.forward_anthropic(body)
+        # Extract client API key from x-api-key or Authorization header
+        client_api_key = None
+        api_key_header = request.headers.get("x-api-key")
+        auth_header = request.headers.get("authorization", "")
+        if api_key_header:
+            client_api_key = api_key_header
+        elif auth_header.startswith("Bearer "):
+            client_api_key = auth_header[7:]
+        return await proxy.forward_anthropic(body, client_api_key=client_api_key)
 
     @app.get("/v1/models")
     async def list_models():

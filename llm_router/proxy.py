@@ -115,7 +115,7 @@ class StreamProxy:
             trust_env=False,
         )
 
-    async def forward_anthropic(self, request_body: dict) -> StreamingResponse | JSONResponse:
+    async def forward_anthropic(self, request_body: dict, client_api_key: str | None = None) -> StreamingResponse | JSONResponse:
         """Forward an Anthropic Messages API request."""
         is_stream = request_body.get("stream", False)
         requested_model = request_body.get("model", "auto")
@@ -133,6 +133,7 @@ class StreamProxy:
             "log_schema_version": LOG_SCHEMA_VERSION,
             "request_id": request_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "client_api_key": client_api_key,
             "requested_model": requested_model,
             "requested_model_tier": route_info.get("requested_model_tier"),
             "estimated_tokens": route_info.get("estimated_tokens", 0),
@@ -171,6 +172,24 @@ class StreamProxy:
         log_entry["raw_features"] = raw_features
         log_entry["semantic_features"] = semantic_features_out
         log_entry["router_context"] = router_context
+
+        # --- Tier permission check ---
+        selected_tier = route_info.get("selected_tier", tier)
+        tier_allowed, exclusion_reason = self.router.check_tier_permission(client_api_key, selected_tier)
+        if not tier_allowed:
+            logger.warning(f"Tier restriction triggered for client API key: {exclusion_reason}")
+            log_entry["observability_only"] = True
+            # Re-route to highest allowed tier
+            tier_order = self.config.tier_order
+            for allowed_tier in tier_order:
+                allowed, _ = self.router.check_tier_permission(client_api_key, allowed_tier)
+                if allowed:
+                    logger.info(f"Re-routing to allowed tier: {allowed_tier}")
+                    model_id, provider_cfg, route_info = self.router._select_model(allowed_tier, route_info)
+                    tier = allowed
+                    log_entry["selected_tier"] = allowed_tier
+                    log_entry["routed_tier"] = allowed_tier
+                    break
 
         # --- Shadow policy decision ---
         if self.shadow_policy is not None:
@@ -253,8 +272,14 @@ class StreamProxy:
 
     async def _anthropic_stream(self, url, headers, body, model_id, tier, timeout, start, log_entry) -> StreamingResponse:
         """Stream Anthropic SSE response."""
+        estimated_input = log_entry.get("estimated_tokens", 0)
+        input_cost_per_m = self.config.cost_config.get("input_cost_per_million", 3.5)
+        output_cost_per_m = self.config.cost_config.get("output_cost_per_million", 18.0)
+        estimated_cost = f"{(estimated_input / 1_000_000 * input_cost_per_m):.4f}"
+
         async def generate():
             ttft_recorded = False
+            output_tokens_cumulative = 0
             log_entry["routed_model"] = model_id
             log_entry["routed_tier"] = tier
             log_entry["routed_provider"] = self.config.model_registry.get(model_id, {}).get("provider", "unknown")
@@ -284,7 +309,22 @@ class StreamProxy:
                             log_entry["ttft_ms"] = round(ttft_ms)
                             self.tracker.record_ttft(model_id, ttft_ms)
                             ttft_recorded = True
+
+                        # Track output tokens from message_usage events
+                        if line.startswith("event: message_usage"):
+                            usage_data = line.split("data: ", 1)
+                            if len(usage_data) > 1:
+                                try:
+                                    usage = json.loads(usage_data[1])
+                                    output_tokens_cumulative = usage.get("output_tokens", 0)
+                                except json.JSONDecodeError:
+                                    pass
+
                         yield line + "\n\n"
+
+                    # After stream ends, emit token counts and cost
+                    final_cost = f"{(estimated_input / 1_000_000 * input_cost_per_m) + (output_tokens_cumulative / 1_000_000 * output_cost_per_m):.4f}"
+                    yield f"event: token_count\ndata: {json.dumps({'input_tokens': estimated_input, 'output_tokens': output_tokens_cumulative, 'estimated_cost': final_cost})}\n\n"
 
                     elapsed_ms = (time.monotonic() - start) * 1000
                     self.tracker.record(model_id, elapsed_ms, success=True)
@@ -310,6 +350,9 @@ class StreamProxy:
                 "X-Accel-Buffering": "no",
                 "X-Routed-Model": model_id,
                 "X-Routed-Tier": tier,
+                "X-Token-Count-Input": str(estimated_input),
+                "X-Token-Count-Output": "0",  # Updated via SSE event after stream ends
+                "X-Estimated-Cost": estimated_cost,
             },
         )
 
@@ -328,6 +371,24 @@ class StreamProxy:
         log_entry["latency_ms"] = round(elapsed_ms)
         log_entry["status"] = resp.status_code
 
+        # Extract token usage from response for cost visibility
+        estimated_input = log_entry.get("estimated_tokens", 0)
+        input_tokens_val = estimated_input
+        output_tokens_val = 0
+        estimated_cost = "0.00"
+        input_cost_per_m = self.config.cost_config.get("input_cost_per_million", 3.5)
+        output_cost_per_m = self.config.cost_config.get("output_cost_per_million", 18.0)
+
+        if resp.status_code == 200:
+            try:
+                resp_data = resp.json()
+                usage = resp_data.get("usage", {})
+                input_tokens_val = usage.get("input_tokens", estimated_input)
+                output_tokens_val = usage.get("output_tokens", 0)
+                estimated_cost = f"{(input_tokens_val / 1_000_000 * input_cost_per_m) + (output_tokens_val / 1_000_000 * output_cost_per_m):.4f}"
+            except Exception:
+                pass
+
         if resp.status_code != 200:
             log_entry["error"] = resp.text[:500]
             self.req_logger.log(log_entry)
@@ -338,7 +399,13 @@ class StreamProxy:
         self.req_logger.log(log_entry)
         return JSONResponse(
             content=resp.json(),
-            headers={"X-Routed-Model": model_id, "X-Routed-Tier": tier},
+            headers={
+                "X-Routed-Model": model_id,
+                "X-Routed-Tier": tier,
+                "X-Token-Count-Input": str(input_tokens_val),
+                "X-Token-Count-Output": str(output_tokens_val),
+                "X-Estimated-Cost": estimated_cost,
+            },
         )
 
     async def _try_fallback_anthropic(self, request_body: dict, failed_model: str, is_stream: bool, log_entry: dict):
