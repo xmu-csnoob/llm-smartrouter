@@ -16,6 +16,7 @@ from .router import Router
 from .latency import LatencyTracker
 from .request_logger import RequestLogger
 from .scoring import extract_text_from_messages, extract_text_from_system
+from .rate_limiter import RateLimiter
 from . import semantic_features
 
 logger = logging.getLogger("llm_router")
@@ -103,20 +104,55 @@ def _build_schema_v3_fields(
 class StreamProxy:
     """Forwards requests to providers with SSE passthrough and fallback."""
 
-    def __init__(self, config: RouterConfig, router: Router, tracker: LatencyTracker, req_logger: RequestLogger, shadow_policy=None, redactor=None):
+    def __init__(self, config: RouterConfig, router: Router, tracker: LatencyTracker, req_logger: RequestLogger, shadow_policy=None, redactor=None, rate_limiter=None):
         self.config = config
         self.router = router
         self.tracker = tracker
         self.req_logger = req_logger
         self.shadow_policy = shadow_policy
         self.redactor = redactor
+        self.rate_limiter = rate_limiter
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0),
             trust_env=False,
         )
 
+    def _build_rate_limit_headers(self, client_api_key: str | None) -> dict:
+        """Build rate limit headers from current remaining quota."""
+        if not client_api_key or not self.rate_limiter:
+            return {}
+        remaining = self.rate_limiter.get_remaining(client_api_key)
+        headers = {}
+        if "rpm_remaining" in remaining:
+            headers["X-RateLimit-Remaining"] = str(remaining["rpm_remaining"])
+            headers["X-RateLimit-Limit"] = str(remaining["rpm_limit"])
+        if "budget_remaining" in remaining:
+            headers["X-RateLimit-Budget-Remaining"] = str(remaining["budget_remaining"])
+            headers["X-RateLimit-Budget-Limit"] = str(remaining["budget_limit"])
+        return headers
+
     async def forward_anthropic(self, request_body: dict, client_api_key: str | None = None) -> StreamingResponse | JSONResponse:
         """Forward an Anthropic Messages API request."""
+        # --- Rate limit check (before routing) ---
+        if self.rate_limiter is not None and client_api_key:
+            allowed, reason = self.rate_limiter.check(client_api_key)
+            if not allowed:
+                remaining = self.rate_limiter.get_remaining(client_api_key)
+                headers = {}
+                if "rpm_remaining" in remaining:
+                    headers["X-RateLimit-Remaining"] = str(remaining["rpm_remaining"])
+                    headers["X-RateLimit-Limit"] = str(remaining["rpm_limit"])
+                if "budget_remaining" in remaining:
+                    headers["X-RateLimit-Budget-Remaining"] = str(remaining["budget_remaining"])
+                    headers["X-RateLimit-Budget-Limit"] = str(remaining["budget_limit"])
+                logger.warning(f"Rate limit triggered for API key: {reason}")
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": reason, "type": "rate_limit_exceeded"},
+                    headers=headers,
+                )
+            self.rate_limiter.record(client_api_key)
+
         is_stream = request_body.get("stream", False)
         requested_model = request_body.get("model", "auto")
         model_id, provider_cfg, route_info = self.router.route(request_body)
@@ -326,6 +362,11 @@ class StreamProxy:
                     final_cost = f"{(estimated_input / 1_000_000 * input_cost_per_m) + (output_tokens_cumulative / 1_000_000 * output_cost_per_m):.4f}"
                     yield f"event: token_count\ndata: {json.dumps({'input_tokens': estimated_input, 'output_tokens': output_tokens_cumulative, 'estimated_cost': final_cost})}\n\n"
 
+                    # Record token usage for rate limiting
+                    client_api_key = log_entry.get("client_api_key")
+                    if client_api_key and self.rate_limiter is not None:
+                        self.rate_limiter.record(client_api_key, estimated_input, output_tokens_cumulative)
+
                     elapsed_ms = (time.monotonic() - start) * 1000
                     self.tracker.record(model_id, elapsed_ms, success=True)
                     log_entry["latency_ms"] = round(elapsed_ms)
@@ -353,6 +394,7 @@ class StreamProxy:
                 "X-Token-Count-Input": str(estimated_input),
                 "X-Token-Count-Output": "0",  # Updated via SSE event after stream ends
                 "X-Estimated-Cost": estimated_cost,
+                **self._build_rate_limit_headers(log_entry.get("client_api_key")),
             },
         )
 
@@ -389,6 +431,11 @@ class StreamProxy:
             except Exception:
                 pass
 
+        # Record actual token usage for rate limiting
+        client_api_key = log_entry.get("client_api_key")
+        if client_api_key and self.rate_limiter is not None:
+            self.rate_limiter.record(client_api_key, input_tokens_val, output_tokens_val)
+
         if resp.status_code != 200:
             log_entry["error"] = resp.text[:500]
             self.req_logger.log(log_entry)
@@ -397,6 +444,18 @@ class StreamProxy:
 
         logger.debug(f"Request completed: {model_id} in {elapsed_ms:.0f}ms")
         self.req_logger.log(log_entry)
+
+        # Build rate limit headers
+        rate_headers = {}
+        if client_api_key and self.rate_limiter is not None:
+            remaining = self.rate_limiter.get_remaining(client_api_key)
+            if "rpm_remaining" in remaining:
+                rate_headers["X-RateLimit-Remaining"] = str(remaining["rpm_remaining"])
+                rate_headers["X-RateLimit-Limit"] = str(remaining["rpm_limit"])
+            if "budget_remaining" in remaining:
+                rate_headers["X-RateLimit-Budget-Remaining"] = str(remaining["budget_remaining"])
+                rate_headers["X-RateLimit-Budget-Limit"] = str(remaining["budget_limit"])
+
         return JSONResponse(
             content=resp.json(),
             headers={
@@ -405,6 +464,7 @@ class StreamProxy:
                 "X-Token-Count-Input": str(input_tokens_val),
                 "X-Token-Count-Output": str(output_tokens_val),
                 "X-Estimated-Cost": estimated_cost,
+                **rate_headers,
             },
         )
 

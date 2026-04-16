@@ -21,6 +21,7 @@ from .request_logger import RequestLogger
 from .schemas import ModelInfo, StatusResponse
 from .shadow_policy import ShadowPolicy
 from .redaction import Redactor
+from .rate_limiter import RateLimiter
 
 logger = logging.getLogger("llm_router")
 
@@ -137,7 +138,8 @@ def create_app(config: RouterConfig) -> FastAPI:
     router = Router(config, tracker, ml_model=ml_model)
     shadow_policy = ShadowPolicy(config.shadow_policy_config)
     redactor = Redactor(config.redaction_config)
-    proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor)
+    rate_limiter = RateLimiter(config)
+    proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor, rate_limiter)
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request):
@@ -192,7 +194,7 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     @app.post("/reload")
     async def reload_config():
-        nonlocal tracker, router, proxy, ml_model, shadow_policy, redactor
+        nonlocal tracker, router, proxy, ml_model, shadow_policy, redactor, rate_limiter
         try:
             await proxy.client.aclose()
             config.load()
@@ -217,7 +219,8 @@ def create_app(config: RouterConfig) -> FastAPI:
             router = Router(config, tracker, ml_model=ml_model)
             shadow_policy = ShadowPolicy(config.shadow_policy_config)
             redactor = Redactor(config.redaction_config)
-            proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor)
+            rate_limiter = RateLimiter(config)
+            proxy = StreamProxy(config, router, tracker, req_logger, shadow_policy, redactor, rate_limiter)
             return {"status": "reloaded"}
         except Exception as e:
             return JSONResponse(status_code=500, content={"error": str(e)})
@@ -229,6 +232,10 @@ def create_app(config: RouterConfig) -> FastAPI:
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
         return req_logger.get_stats(hours)
+
+    @app.get("/api/rate_limits")
+    async def rate_limit_stats():
+        return rate_limiter.get_all_stats()
 
     @app.post("/api/logs/archive")
     async def archive_logs():
