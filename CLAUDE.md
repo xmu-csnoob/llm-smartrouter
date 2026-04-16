@@ -88,6 +88,16 @@ Models within a tier are ranked by a health score (100 base, penalized by latenc
 
 React 19 + Vite 8 + TailwindCSS 4 + shadcn/ui + Recharts. Components: StatsCards, LatencyChart, ModelChart (drill-down), RequestTable, AnalysisPanel (AI-powered log analysis via SSE). Supports English/Chinese i18n. Auto-refreshes every 10 seconds.
 
+**Design Language: Mission Control Dark** — LOCKED. Do not change the overall aesthetic. Only modify details and layout.
+
+- **Theme**: Deep navy background (`hsl(225 45% 6%)`), cyan primary accent (`hsl(185 80% 50%)`), ambient grid overlay
+- **Typography**: IBM Plex Sans (body), IBM Plex Mono (mono/data), Unbounded (headings/brand)
+- **Animations**: Staggered fade-in-up on panels, pulsing dot indicators, live clock in sidebar
+- **Effects**: Glow box-shadows on stat blocks, top-border accent lines, thin 4px scrollbars
+- **Status indicators**: "NOMINAL" badge with pulsing green dot, live clock with Radio icon
+- **Layout**: Sidebar nav (overview/logs/archive), top stats row (5 columns), 5-panel middle grid, request table below
+- **Colors**: Use CSS custom properties exclusively — `--primary`, `--muted`, `--muted-foreground`, `--border`, `--card`, `--popover`, `--foreground`, `--background`
+
 ### Key API Endpoints
 
 | Endpoint | Purpose |

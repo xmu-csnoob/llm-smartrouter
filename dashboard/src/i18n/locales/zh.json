@@ -47,10 +47,20 @@
     "modelDistribution": "模型分布",
     "noData": "暂无数据",
     "latencyTrend": "Latency 趋势",
+    "intentDistribution": "意图分布",
+    "difficultyDistribution": "难度分布",
     "request": "请求",
     "requests": "{value} 次请求 (avg {avgLatency}ms)",
     "requestLabel": "请求 {label} — {model}",
-    "requestLabelShort": "请求 {label}"
+    "requestLabelShort": "请求 {label}",
+    "intentDifficulty": "意图 & 难度",
+    "spActive": "影子策略启用",
+    "forcedDowngrade": "强制降级",
+    "avgPropensity": "平均倾向性",
+    "spMode": "SP 模式",
+    "candidateTier": "候选层级",
+    "exclusionReasons": "排除原因",
+    "hardExclusionRules": "硬排除规则"
   },
   "analysis": {
     "title": "日志分析",

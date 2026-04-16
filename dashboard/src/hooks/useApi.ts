@@ -115,6 +115,15 @@ export interface Stats {
   missing_selected_tier_count: number;
   task_types: Record<string, number>;
   schema_versions: Record<string, number>;
+  intent_distribution: Record<string, number>;
+  difficulty_distribution: Record<string, number>;
+  // Shadow policy stats
+  shadow_policy_mode_distribution: Record<string, number>;
+  shadow_policy_candidate_tier_distribution: Record<string, number>;
+  shadow_policy_avg_propensity: number | null;
+  shadow_policy_forced_lower_tier_count: number;
+  shadow_policy_exclusion_reasons: Record<string, number>;
+  shadow_policy_hard_exclusion_counts: Record<string, number>;
 }
 
 export async function fetchRecent(offset = 0, limit = 50, model?: string | null): Promise<RecentResponse> {
