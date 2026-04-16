@@ -1,34 +1,35 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StatsCards } from './components/StatsCards'
-import { RequestTable } from './components/RequestTable'
 import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
-import { fetchRecent, fetchStats, type LogEntry, type Stats } from './hooks/useApi'
+import { RequestTable } from './components/RequestTable'
+import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { useI18n } from './i18n'
+import { LayoutDashboard, Database, Archive, Globe } from 'lucide-react'
+
+type NavView = 'overview' | 'logs' | 'archive'
 
 function App() {
   const { t, locale, setLocale } = useI18n()
+  const [nav, setNav] = useState<NavView>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
 
-  // All logs (for overview)
+  // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
   const [totalAllEntries, setTotalAllEntries] = useState(0)
   const [currentAllPage, setCurrentAllPage] = useState(1)
 
-  // Model-specific logs (for detail view)
+  // Model-specific logs
   const [modelEntries, setModelEntries] = useState<LogEntry[]>([])
   const [totalModelEntries, setTotalModelEntries] = useState(0)
   const [currentModelPage, setCurrentModelPage] = useState(1)
-  const pageSize = 20
+  const pageSize = 25
 
-  const selectedModelStats = useMemo(
-    () => selectedModel && stats?.models[selectedModel]
-      ? stats.models[selectedModel]
-      : null,
-    [stats, selectedModel],
-  )
+  const selectedModelStats = selectedModel && stats?.models[selectedModel]
+    ? stats.models[selectedModel]
+    : null
 
   // Load stats
   useEffect(() => {
@@ -43,7 +44,7 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Load all logs for overview
+  // Load all logs
   useEffect(() => {
     const load = async () => {
       try {
@@ -58,7 +59,7 @@ function App() {
     return () => clearInterval(interval)
   }, [currentAllPage])
 
-  // Load model-specific logs for detail view
+  // Load model-specific logs
   useEffect(() => {
     if (!selectedModel) return
     const load = async () => {
@@ -95,52 +96,128 @@ function App() {
     setCurrentModelPage(Math.floor(newOffset / pageSize) + 1)
   }
 
-  return (
-    <div className="min-h-screen p-4 md:p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          {selectedModel && (
-            <button
-              onClick={handleBack}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← {t('app.overview')}
-            </button>
-          )}
-          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
-            {selectedModel ? (
-              <span className="font-mono">{selectedModel}</span>
-            ) : (
-              t('app.title')
-            )}
-          </h1>
-        </div>
-        <button
-          onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-          className="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-secondary transition-colors"
-        >
-          {locale === 'en' ? '中文' : 'EN'}
-        </button>
-      </header>
+  const refreshAll = async () => {
+    try {
+      const s = await fetchStats()
+      setStats(s)
+    } catch {}
+    try {
+      const offset = (currentAllPage - 1) * pageSize
+      const response = await fetchRecent(offset, pageSize, null)
+      setAllEntries(response.entries)
+      setTotalAllEntries(response.total)
+    } catch {}
+  }
 
-      {selectedModel ? (
-        // Model Detail View
-        <div className="space-y-[18px]">
-          <StatsCards stats={stats} modelStats={selectedModelStats} />
-          <div className="gs-panel">
-            <div className="gs-panel-header">
-              <span className="gs-eyebrow">{t('app.recentRequests')}</span>
+  const handleArchive = async () => {
+    if (!window.confirm(t('stats.clearLogsConfirm'))) return
+    try {
+      const result = await archiveLogs()
+      if (result.total_archived > 0) {
+        await refreshAll()
+      }
+    } catch {}
+  }
+
+  return (
+    <div className="app-shell">
+      {/* ── Sidebar ── */}
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs font-mono">LR</span>
             </div>
-            <div className="gs-panel-body">
-              <LatencyChart entries={modelEntries} />
+            <div>
+              <div className="text-sm font-semibold tracking-tight leading-none">LLM Router</div>
+              <div className="text-[10px] text-muted-foreground font-mono mt-0.5">v2.0</div>
             </div>
           </div>
-          <div className="gs-panel">
-            <div className="gs-panel-header">
-              <span className="gs-eyebrow">{t('app.recentRequests')}</span>
+        </div>
+
+        <nav className="sidebar-nav">
+          <button
+            className={`sidebar-nav-item ${nav === 'overview' && !selectedModel ? 'active' : ''}`}
+            onClick={() => { setNav('overview'); handleBack(); }}
+          >
+            <LayoutDashboard className="nav-icon" size={16} />
+            {t('app.overview')}
+          </button>
+          <button
+            className={`sidebar-nav-item ${nav === 'logs' ? 'active' : ''}`}
+            onClick={() => { setNav('logs'); handleBack(); }}
+          >
+            <Database className="nav-icon" size={16} />
+            {t('app.allRequests')}
+          </button>
+          <button
+            className="sidebar-nav-item"
+            onClick={handleArchive}
+          >
+            <Archive className="nav-icon" size={16} />
+            {t('stats.clearLogs')}
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <button
+            onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+            className="lang-toggle"
+          >
+            <Globe size={12} style={{ display: 'inline', marginRight: '4px' }} />
+            {locale === 'en' ? '中文' : 'EN'}
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ── */}
+      <main className="app-main">
+        {selectedModel ? (
+          /* ── Model Detail View ── */
+          <div className="app-content">
+            <div className="model-detail-header">
+              <button className="back-btn" onClick={handleBack}>
+                ← {t('app.overview')}
+              </button>
+              <span className="model-name-badge">{selectedModel}</span>
             </div>
-            <div className="gs-panel-body">
+
+            {selectedModelStats && (
+              <div className="model-stats-row">
+                <div className="model-mini-stat">
+                  <span>Requests:</span>
+                  <strong>{selectedModelStats.count.toLocaleString()}</strong>
+                </div>
+                <div className="model-mini-stat">
+                  <span>Avg Latency:</span>
+                  <strong>{selectedModelStats.avg_latency_ms}ms</strong>
+                </div>
+                {selectedModelStats.avg_ttft_ms != null && (
+                  <div className="model-mini-stat">
+                    <span>Avg TTFT:</span>
+                    <strong>{selectedModelStats.avg_ttft_ms}ms</strong>
+                  </div>
+                )}
+                <div className="model-mini-stat">
+                  <span>Errors:</span>
+                  <strong>{selectedModelStats.errors}</strong>
+                </div>
+              </div>
+            )}
+
+            <div className="gs-panel">
+              <div className="gs-panel-header">
+                <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
+              </div>
+              <div className="gs-panel-body latency-chart-container">
+                <LatencyChart entries={modelEntries} />
+              </div>
+            </div>
+
+            <div className="gs-panel request-table-panel">
+              <div className="gs-panel-header">
+                <span className="gs-eyebrow">{t('app.recentRequests')}</span>
+              </div>
               <RequestTable
                 entries={modelEntries}
                 total={totalModelEntries}
@@ -150,49 +227,91 @@ function App() {
               />
             </div>
           </div>
-        </div>
-      ) : (
-        // Overview
-        <div className="space-y-[18px]">
-          <StatsCards stats={stats} />
+        ) : (
+          /* ── Overview / Logs View ── */
+          <>
+            <header className="app-header">
+              <div className="flex items-center gap-3">
+                {nav !== 'overview' && (
+                  <button className="back-btn" onClick={() => setNav('overview')}>
+                    ← {t('app.overview')}
+                  </button>
+                )}
+                <h1 className="text-lg font-semibold tracking-tight">
+                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : t('app.title')}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={refreshAll}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-border hover:bg-muted transition-colors"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+            </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-[18px]">
-            <div className="gs-panel">
-              <div className="gs-panel-header">
-                <span className="gs-eyebrow">Model Distribution</span>
-              </div>
-              <div className="gs-panel-body">
-                <ModelChart stats={stats} onSliceClick={handleModelSelect} />
-              </div>
-            </div>
+            <div className="app-content">
+              {/* Stats Row */}
+              <StatsCards stats={stats} onRefresh={refreshAll} />
 
-            <div className="gs-panel lg:col-span-2">
-              <div className="gs-panel-header">
-                <span className="gs-eyebrow">{t('analysis.title')}</span>
-              </div>
-              <div className="gs-panel-body">
-                <AnalysisPanel />
-              </div>
-            </div>
-          </div>
+              {nav === 'overview' ? (
+                /* ── Overview: 3-column middle grid ── */
+                <div className="middle-grid">
+                  {/* Model Distribution */}
+                  <div className="gs-panel distribution-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">{t('chart.modelDistribution')}</span>
+                    </div>
+                    <div className="gs-panel-body">
+                      <ModelChart stats={stats} onSliceClick={handleModelSelect} />
+                    </div>
+                  </div>
 
-          {/* All Logs Table */}
-          <div className="gs-panel">
-            <div className="gs-panel-header">
-              <span className="gs-eyebrow">{t('app.allRequests')}</span>
+                  {/* Latency Trend */}
+                  <div className="gs-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
+                    </div>
+                    <div className="gs-panel-body latency-chart-container">
+                      <LatencyChart entries={allEntries} />
+                    </div>
+                  </div>
+
+                  {/* Analysis Panel */}
+                  <div className="gs-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">{t('analysis.title')}</span>
+                    </div>
+                    <div className="gs-panel-body">
+                      <AnalysisPanel />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* All Requests Table */}
+              <div className="gs-panel request-table-panel">
+                <div className="gs-panel-header">
+                  <span className="gs-eyebrow">
+                    {nav === 'overview' ? t('app.recentRequests') : t('app.allRequests')}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {totalAllEntries.toLocaleString()} total
+                  </span>
+                </div>
+                <RequestTable
+                  entries={allEntries}
+                  total={totalAllEntries}
+                  offset={(currentAllPage - 1) * pageSize}
+                  limit={pageSize}
+                  onPageChange={handleAllPageChange}
+                />
+              </div>
             </div>
-            <div className="gs-panel-body">
-              <RequestTable
-                entries={allEntries}
-                total={totalAllEntries}
-                offset={(currentAllPage - 1) * pageSize}
-                limit={pageSize}
-                onPageChange={handleAllPageChange}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </main>
     </div>
   )
 }

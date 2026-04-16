@@ -1,0 +1,100 @@
+# ===== Provider Definitions =====
+providers:
+  minimax:
+    base_url: "https://api.minimaxi.com/anthropic"
+    api_key: "${MINIMAX_API_KEY}"
+    api_format: "anthropic"
+    timeout: 120
+
+# ===== Model Pool =====
+models:
+  tier1:  # Frontier: design, refactoring, hard bugs
+    - id: "MiniMax-M2.7-highspeed"
+      provider: minimax
+
+  tier2:  # Workhorse: feature implementation
+    - id: "MiniMax-M2.5-highspeed"
+      provider: minimax
+
+  tier3:  # Routine: conflicts, compile errors, simple tasks
+    - id: "MiniMax-M2.1-highspeed"
+      provider: minimax
+
+# ===== Routing Rules =====
+rules:
+  - name: "explicit-model"
+    match: "model_is_known"
+    action: "passthrough"
+
+  - name: "complex-request"
+    match: "estimated_tokens > 4000 or message_count > 20"
+    target: tier1
+
+  - name: "keyword-match"
+    keywords: ["refactor", "design", "architect", "debug", "fix bug", "root cause", "redesign", "rewrite", "migrate"]
+    target: tier1
+
+  - name: "medium-request"
+    match: "estimated_tokens > 2000"
+    target: tier2
+
+  - name: "default"
+    target: tier3
+
+# ===== Request Scoring =====
+scoring:
+  enabled: true
+  legacy_rule_bonus: 2.0
+  tiers:
+    tier1:
+      threshold: 6.0
+    tier2:
+      threshold: 3.0
+
+# ===== Fallback / Degradation =====
+fallback:
+  latency_threshold_ms: 30000
+  error_threshold: 3
+  cooldown_seconds: 120
+  cross_provider: false
+  cross_tier: true
+  degradation_order: [tier1, tier2, tier3]
+
+# ===== Request Logging =====
+logging:
+  enabled: true
+  dir: "./logs"
+  flush_interval_seconds: 2
+  flush_batch_size: 50
+  retention_days: 30
+
+# ===== Server =====
+server:
+  host: "127.0.0.1"
+  port: 8000
+  log_level: "info"
+
+# ===== ML Router =====
+ml_router:
+  enabled: false
+  manifest_path: "./models/manifest.json"
+
+# ===== Shadow Policy =====
+shadow_policy:
+  enabled: false
+  observe_only_rate: 1.0
+  forced_tier1_to_tier2_rate: 0.01
+  forced_tier2_to_tier3_rate: 0.02
+  forbid_direct_tier1_to_tier3: true
+  hard_exclusions:
+    stacktrace_count_gte: 1
+    code_block_count_gte: 3
+    file_path_count_gte: 3
+    estimated_tokens_gte: 3500
+    message_count_gte: 12
+    tool_count_gte: 1
+
+# ===== PII Redaction =====
+redaction:
+  enabled: true
+  redact_paths: true

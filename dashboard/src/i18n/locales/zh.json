@@ -15,7 +15,11 @@
     "perModelNA": "单模型不可用",
     "fallbacks": "{count} 次 fallback",
     "errorRate": "错误率",
-    "errors": "{count} 个错误"
+    "errors": "{count} 个错误",
+    "clearLogs": "清空日志",
+    "clearLogsConfirm": "归档后日志将从控制台隐藏，但文件仍保存在 logs/archive/ 目录，确定清空？",
+    "clearLogsSuccess": "已归档 {n} 个日志文件",
+    "clearLogsError": "归档失败"
   },
   "table": {
     "noRequests": "暂无请求记录",
@@ -23,6 +27,8 @@
     "model": "Model",
     "tier": "Tier",
     "rule": "Rule",
+    "request": "请求摘要",
+    "floor": "最低层级",
     "latency": "Latency",
     "ttft": "TTFT",
     "status": "状态",

@@ -15,7 +15,11 @@
     "perModelNA": "per-model not available",
     "fallbacks": "{count} fallbacks",
     "errorRate": "Error Rate",
-    "errors": "{count} errors"
+    "errors": "{count} errors",
+    "clearLogs": "Clear Logs",
+    "clearLogsConfirm": "Archiving will hide logs from the console, but files will be preserved in logs/archive/. Clear?",
+    "clearLogsSuccess": "Archived {n} log files",
+    "clearLogsError": "Archive failed"
   },
   "table": {
     "noRequests": "No requests logged yet",
@@ -23,6 +27,8 @@
     "model": "Model",
     "tier": "Tier",
     "rule": "Rule",
+    "request": "Request",
+    "floor": "Floor",
     "latency": "Latency",
     "ttft": "TTFT",
     "status": "Status",

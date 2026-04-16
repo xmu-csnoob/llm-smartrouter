@@ -8,9 +8,21 @@ export interface LogEntry {
   message_count: number;
   matched_rule: string;
   matched_by: string;
+  selected_tier: string;
+  min_allowed_tier: string | null;
+  degraded_to_tier: string | null;
+  quality_guard_applied: boolean;
+  quality_guard_reasons: string[];
   routed_model: string;
   routed_tier: string;
   routed_provider: string;
+  request_preview: string | null;
+  request_context?: {
+    system_preview?: string;
+    message_previews?: Array<{ role: string; text: string }>;
+    message_count?: number;
+    preview_count?: number;
+  } | null;
   is_fallback: boolean;
   fallback_chain: Array<{ model: string; tier: string; error: string }>;
   latency_ms: number | null;
@@ -57,6 +69,18 @@ export async function fetchRecent(offset = 0, limit = 50, model?: string | null)
 
 export async function fetchStats(hours = 24): Promise<Stats> {
   const res = await fetch(`${API_BASE}/logs/stats?hours=${hours}`);
+  return res.json();
+}
+
+export interface ArchiveResponse {
+  archived: string[];
+  skipped: string[];
+  total_archived: number;
+}
+
+export async function archiveLogs(): Promise<ArchiveResponse> {
+  const res = await fetch(`${API_BASE}/logs/archive`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Archive failed: ${res.statusText}`);
   return res.json();
 }
 

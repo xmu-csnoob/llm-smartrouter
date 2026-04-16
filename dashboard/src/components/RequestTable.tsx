@@ -1,11 +1,3 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { useI18n } from '@/i18n'
 import type { LogEntry } from '@/hooks/useApi'
 
@@ -19,16 +11,27 @@ interface Props {
 
 function formatTime(ts: string) {
   try {
-    return new Date(ts).toLocaleTimeString()
+    return new Date(ts).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
   } catch {
     return ts
   }
 }
 
-function statusBadge(status: number): string {
-  if (status === 200) return 'gs-badge gs-badge-success'
-  if (status >= 400 && status < 500) return 'gs-badge gs-badge-warning'
-  return 'gs-badge gs-badge-error'
+function StatusBadge({ status }: { status: number }) {
+  const cls =
+    status === 200
+      ? 'gs-badge gs-badge-success'
+      : status >= 400 && status < 500
+      ? 'gs-badge gs-badge-warning'
+      : 'gs-badge gs-badge-error'
+  return <span className={cls}>{status}</span>
 }
 
 export function RequestTable({ entries, total, offset, limit, onPageChange }: Props) {
@@ -36,7 +39,7 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
 
   if (entries.length === 0 && total === 0) {
     return (
-      <div className="gs-empty-state">
+      <div className="gs-empty-state" style={{ margin: '1rem' }}>
         {t('table.noRequests')}
       </div>
     )
@@ -47,65 +50,114 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
 
   return (
     <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('table.time')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('table.model')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('table.tier')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('table.rule')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('table.latency')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t('table.ttft')}</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('table.status')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map((entry) => (
-            <TableRow key={entry.request_id}>
-              <TableCell className="font-mono text-xs text-muted-foreground">
-                {formatTime(entry.timestamp)}
-              </TableCell>
-              <TableCell className="font-mono text-xs">{entry.routed_model}</TableCell>
-              <TableCell>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {entry.routed_tier}
-                </span>
-              </TableCell>
-              <TableCell>
-                <span className="text-xs text-muted-foreground">{entry.matched_rule}</span>
-              </TableCell>
-              <TableCell className="text-right font-mono text-xs">
-                {entry.latency_ms != null ? `${entry.latency_ms}` : '—'}
-              </TableCell>
-              <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                {entry.ttft_ms != null ? `${entry.ttft_ms}` : '—'}
-              </TableCell>
-              <TableCell>
-                <span className={statusBadge(entry.status)}>
-                  {entry.status}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>{t('table.time')}</th>
+              <th>{t('table.model')}</th>
+              <th>{t('table.tier')}</th>
+              <th>{t('table.rule')}</th>
+              <th>{t('table.request')}</th>
+              <th style={{ textAlign: 'right' }}>{t('table.latency')}</th>
+              <th style={{ textAlign: 'right' }}>{t('table.ttft')}</th>
+              <th>{t('table.status')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.request_id}>
+                {/* Time */}
+                <td className="cell-mono" style={{ color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
+                  {formatTime(entry.timestamp)}
+                </td>
+
+                {/* Model */}
+                <td>
+                  <span className="cell-model">{entry.routed_model}</span>
+                </td>
+
+                {/* Tier */}
+                <td>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="gs-badge gs-badge-tier" style={{ alignSelf: 'flex-start' }}>
+                      {entry.routed_tier}
+                    </span>
+                    {entry.selected_tier !== entry.routed_tier && (
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        ← {entry.selected_tier}
+                      </span>
+                    )}
+                  </div>
+                </td>
+
+                {/* Rule */}
+                <td>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {entry.matched_rule}
+                    </span>
+                    {entry.is_fallback && (
+                      <span className="gs-badge gs-badge-warning" style={{ alignSelf: 'flex-start', fontSize: '9px' }}>
+                        FALLBACK
+                      </span>
+                    )}
+                  </div>
+                </td>
+
+                {/* Request preview */}
+                <td className="cell-preview">
+                  {entry.request_preview ? (
+                    <span title={entry.request_preview}>{entry.request_preview}</span>
+                  ) : (
+                    <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                  )}
+                </td>
+
+                {/* Latency */}
+                <td style={{ textAlign: 'right' }}>
+                  <span className="cell-mono" style={{ color: entry.latency_ms && entry.latency_ms > 5000 ? 'hsl(0 72% 50%)' : 'var(--foreground)' }}>
+                    {entry.latency_ms != null ? `${entry.latency_ms}` : '—'}
+                    <span style={{ fontSize: '9px', color: 'var(--muted-foreground)' }}>ms</span>
+                  </span>
+                </td>
+
+                {/* TTFT */}
+                <td style={{ textAlign: 'right' }}>
+                  <span className="cell-mono" style={{ color: 'var(--muted-foreground)' }}>
+                    {entry.ttft_ms != null ? `${entry.ttft_ms}` : '—'}
+                    <span style={{ fontSize: '9px' }}>ms</span>
+                  </span>
+                </td>
+
+                {/* Status */}
+                <td>
+                  <StatusBadge status={entry.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {total > limit && (
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+        <div className="table-pagination">
           <button
-            onClick={() => onPageChange(offset - limit)}
+            onClick={() => onPageChange(Math.max(0, offset - limit))}
             disabled={currentPage === 1}
-            className="px-2.5 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="pagination-btn"
           >
             ← {t('table.previous')}
           </button>
-          <span className="text-xs text-muted-foreground">
+          <span className="pagination-info">
             {t('table.pageInfo', { current: currentPage, total: totalPages })}
+            {' · '}
+            {total.toLocaleString()} total
           </span>
           <button
             onClick={() => onPageChange(offset + limit)}
             disabled={currentPage >= totalPages}
-            className="px-2.5 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="pagination-btn"
           >
             {t('table.next')} →
           </button>
