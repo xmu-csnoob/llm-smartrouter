@@ -22,6 +22,7 @@ import { IntentLatencyBreakdown } from './components/IntentLatencyBreakdown'
 import { FallbackCascadeDiagram } from './components/FallbackCascadeDiagram'
 import { RoutingAmbiguityIndicator } from './components/RoutingAmbiguityIndicator'
 import { TierRoutingComparison } from './components/TierRoutingComparison'
+import { RoutingErrorHotspotTable } from './components/RoutingErrorHotspotTable'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -359,6 +360,7 @@ function App() {
               <FallbackCascadeDiagram entries={allEntries} />
               <RoutingAmbiguityIndicator entries={allEntries} />
               <TierRoutingComparison entries={allEntries} />
+              <RoutingErrorHotspotTable entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>
