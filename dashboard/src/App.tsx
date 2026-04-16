@@ -59,6 +59,7 @@ import { AlertCorrelationMatrix } from './components/AlertCorrelationMatrix'
 import { IntentDifficultyCorrelationMatrix } from './components/IntentDifficultyCorrelationMatrix'
 import { MLFeatureAttributionMatrix } from './components/MLFeatureAttributionMatrix'
 import { RoutingRuleLeaderboard } from './components/RoutingRuleLeaderboard'
+import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -440,6 +441,9 @@ function App() {
               </GSPanel>
               <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierTrafficFlow stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="tier-routing-flow" title="Tier Routing Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierRoutingFlowDiagram entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="error-burst" title="Error Monitor" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ErrorBurstDetector entries={allEntries} />
