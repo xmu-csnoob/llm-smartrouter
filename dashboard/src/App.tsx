@@ -26,6 +26,7 @@ import { RoutingErrorHotspotTable } from './components/RoutingErrorHotspotTable'
 import { HourlyIntentComposition } from './components/HourlyIntentComposition'
 import { RecentFallbackFeed } from './components/RecentFallbackFeed'
 import { RoutingMethodDistribution } from './components/RoutingMethodDistribution'
+import { RoutingMethodQualityPanel } from './components/RoutingMethodQualityPanel'
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
 import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
@@ -442,6 +443,7 @@ function App() {
               <FallbackChainExplorer entries={allEntries} />
               <DifficultyHeatmapPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
+              <RoutingMethodQualityPanel entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
