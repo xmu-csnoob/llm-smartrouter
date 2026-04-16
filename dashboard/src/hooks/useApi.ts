@@ -1,5 +1,47 @@
 const API_BASE = '/api';
 
+export interface SemanticFeatures {
+  intent: string;
+  difficulty: string;
+  domain: string;
+  tool_usage_pattern: string;
+  error_pattern_type: string | null;
+  cross_file_analysis: boolean;
+  recursive_depth: string;
+  multi_turn_depth: string;
+  requires_reasoning: boolean;
+  clarification_needed_score: number;
+  is_followup: boolean;
+  // Keyword signal counts
+  debug_signal_count: number;
+  design_signal_count: number;
+  implementation_signal_count: number;
+  review_signal_count: number;
+  explain_signal_count: number;
+  generation_signal_count: number;
+  reasoning_signal_count: number;
+  constraint_signal_count: number;
+  comparison_signal_count: number;
+  migration_signal_count: number;
+  performance_signal_count: number;
+}
+
+export interface ShadowPolicyDecision {
+  enabled: boolean;
+  mode: string;
+  candidate_tier: string | null;
+  propensity: number;
+  exclusion_reason: string | null;
+  hard_exclusions_triggered: string[];
+}
+
+export interface RedactedPreview {
+  system_preview: string;
+  message_previews: Array<{ role: string; text: string }>;
+  message_count: number;
+  preview_count: number;
+}
+
 export interface LogEntry {
   request_id: string;
   timestamp: string;
@@ -30,6 +72,14 @@ export interface LogEntry {
   is_stream: boolean;
   status: number;
   error: string | null;
+  // Schema v3 fields
+  log_schema_version?: number;
+  raw_features?: Record<string, number | boolean>;
+  semantic_features?: SemanticFeatures;
+  router_context?: Record<string, unknown>;
+  shadow_policy_decision?: ShadowPolicyDecision;
+  redacted_preview?: RedactedPreview;
+  task_type?: string;
 }
 
 export interface RecentResponse {
@@ -58,6 +108,13 @@ export interface Stats {
   avg_latency_ms: number | null;
   avg_ttft_ms: number | null;
   models: Record<string, ModelStats>;
+  // Schema v3 enrichment
+  feature_snapshot_count: number;
+  selected_tier_count: number;
+  missing_feature_snapshot_count: number;
+  missing_selected_tier_count: number;
+  task_types: Record<string, number>;
+  schema_versions: Record<string, number>;
 }
 
 export async function fetchRecent(offset = 0, limit = 50, model?: string | null): Promise<RecentResponse> {

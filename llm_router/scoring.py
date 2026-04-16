@@ -6,6 +6,8 @@ import re
 from copy import deepcopy
 from typing import Any
 
+from . import semantic_features
+
 
 _CJK_RANGE = re.compile(r"[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]")
 _CODE_BLOCK_PATTERN = re.compile(r"```")
@@ -202,6 +204,23 @@ class RequestScorer:
             "complexity_signal_count": complexity_signal_count,
         }
         feature_values["error_signal_count"] = error_signal_count
+
+        # Extract semantic features (intent, difficulty, domain)
+        raw_features_for_semantic = {
+            "tool_count": feature_values["tool_count"],
+            "input_chars": feature_values["input_chars"],
+            "estimated_tokens": feature_values["estimated_tokens"],
+            "message_count": feature_values["message_count"],
+            "code_block_count": code_block_count,
+            "file_path_count": file_path_count,
+            "stacktrace_count": stacktrace_count,
+            "is_followup": bool(request_body.get("is_followup")),
+        }
+        semantic = semantic_features.extract_semantic_features(messages, combined_text, raw_features_for_semantic)
+        feature_values["intent"] = semantic.get("intent", "general")
+        feature_values["difficulty"] = semantic.get("difficulty", "medium")
+        feature_values["domain"] = semantic.get("domain", "general")
+
         feature_values["request_shape"] = {
             "input_chars": feature_values["input_chars"],
             "estimated_tokens": feature_values["estimated_tokens"],
@@ -381,16 +400,31 @@ class RequestScorer:
         return lowest_tier
 
     def _classify_task_type(self, feature_values: dict[str, Any]) -> str:
-        if feature_values.get("stacktrace_count", 0) > 0:
+        # This method is kept for backward compatibility with routing feature config.
+        # It maps new intent/difficulty to the legacy taxonomy for scoring features.
+        # New taxonomy: intent (debug/design/implement/review/explain/generate/question/general)
+        #               + difficulty (simple/medium/complex)
+        intent = feature_values.get("intent", "general")
+        difficulty = feature_values.get("difficulty", "medium")
+
+        # Map intent to legacy task_type for scoring features that still reference it
+        if intent == "debug":
             return "debug"
-        if feature_values.get("code_block_count", 0) > 0 or feature_values.get("file_path_count", 0) > 0:
-            return "implementation"
-        if feature_values.get("message_count", 0) >= 8 or feature_values.get("complexity_signal_count", 0) >= 4:
+        if intent == "design":
             return "architecture"
-        if feature_values.get("input_chars", 0) >= 40 or feature_values.get("tool_count", 0) > 0:
+        if intent == "implement":
+            return "implementation"
+        if intent in ("review", "explain"):
             return "analysis"
-        if feature_values.get("estimated_tokens", 0) <= 600 and feature_values.get("message_count", 0) <= 3:
+        if intent == "generate":
+            return "implementation"  # generation is treated like implementation for tier routing
+        if intent == "question":
+            return "simple"  # questions are typically simple
+        # general or fallback
+        if difficulty == "simple":
             return "simple"
+        if difficulty == "complex":
+            return "architecture"
         return "general"
 
     async def get_ml_prediction(self, text: str, timeout_ms: int = 50) -> dict[str, float] | None:

@@ -82,8 +82,13 @@ class RawFeatures(BaseModel):
 
 
 class SemanticFeatures(BaseModel):
-    intent_type: str = "general"
-    task_domain: str = "general"
+    # Intent — what the user wants to do
+    intent: str = "general"
+    # Difficulty — how hard the task is (heuristic placeholder, to be replaced by model)
+    difficulty: str = "medium"
+    # Domain — what tech area
+    domain: str = "general"
+    # Content signals
     tool_usage_pattern: str = "no_tools"
     error_pattern_type: str | None = None
     cross_file_analysis: bool = False
@@ -92,15 +97,18 @@ class SemanticFeatures(BaseModel):
     requires_reasoning: bool = False
     clarification_needed_score: float = 0.0
     is_followup: bool = False
-    architecture_signal_count: int = 0
+    # Keyword signals (for ML training data)
     debug_signal_count: int = 0
-    migration_signal_count: int = 0
-    performance_signal_count: int = 0
-    reasoning_signal_count: int = 0
+    design_signal_count: int = 0
     implementation_signal_count: int = 0
+    review_signal_count: int = 0
+    explain_signal_count: int = 0
     generation_signal_count: int = 0
+    reasoning_signal_count: int = 0
     constraint_signal_count: int = 0
     comparison_signal_count: int = 0
+    migration_signal_count: int = 0
+    performance_signal_count: int = 0
 
 
 class RouterContext(BaseModel):
