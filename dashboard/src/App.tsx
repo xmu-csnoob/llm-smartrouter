@@ -37,6 +37,7 @@ import { ModelRoutingDelta } from './components/ModelRoutingDelta'
 import { StatusCodeDistribution } from './components/StatusCodeDistribution'
 import { TokenConsumptionPanel } from './components/TokenConsumptionPanel'
 import { ConversationLengthPanel } from './components/ConversationLengthPanel'
+import { TierConstraintMonitor } from './components/TierConstraintMonitor'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -385,6 +386,7 @@ function App() {
               <StatusCodeDistribution entries={allEntries} />
               <TokenConsumptionPanel entries={allEntries} />
               <ConversationLengthPanel entries={allEntries} />
+              <TierConstraintMonitor entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
