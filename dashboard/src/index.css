@@ -185,7 +185,11 @@
   background: radial-gradient(ellipse, hsl(185 80% 50% / 0.1) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
-  animation: brand-pulse 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-brand::before {
+    animation: brand-pulse 3s ease-in-out infinite;
+  }
 }
 
 @keyframes brand-pulse {
@@ -379,7 +383,11 @@
   border-radius: 50%;
   background: var(--primary);
   box-shadow: var(--glow-primary-sm);
-  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stat-block-label .label-dot {
+    animation: pulse-dot 2.5s ease-in-out infinite;
+  }
 }
 
 @keyframes pulse-dot {
@@ -460,6 +468,11 @@
   box-shadow: 0 0 0 1px hsl(185 80% 50% / 0.15), 0 8px 32px hsl(0 0% 0% / 0.5), 0 0 20px hsl(185 80% 50% / 0.08);
   transform: translateY(-1px);
   border-color: hsl(185 80% 50% / 0.2);
+}
+
+.gs-panel:active {
+  transform: translateY(0);
+  box-shadow: 0 0 0 1px hsl(185 80% 50% / 0.1), 0 4px 16px hsl(0 0% 0% / 0.4);
 }
 
 .gs-panel::before {
@@ -729,8 +742,12 @@
   background: linear-gradient(90deg, transparent, hsl(185 80% 50% / 0.04), transparent);
   pointer-events: none;
   z-index: 1;
-  animation: panel-shimmer 4s ease-in-out infinite;
-  animation-delay: 2s;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gs-panel::after {
+    animation: panel-shimmer 4s ease-in-out infinite;
+    animation-delay: 2s;
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -1294,8 +1311,15 @@
 }
 
 .intent-ticker-track {
-  animation: ticker-scroll 18s linear infinite;
   will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .intent-ticker-track {
+    animation: ticker-scroll 18s linear infinite;
+  }
+  .intent-ticker-track:hover {
+    animation-play-state: paused;
+  }
 }
 
 .intent-ticker-track:hover {
@@ -1313,6 +1337,15 @@
 
 .stat-block {
   animation: fade-in-up 400ms ease-out both;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gs-panel {
+    animation: fade-in-up 400ms ease-out both;
+  }
+
+  .stat-block {
+    animation: fade-in-up 400ms ease-out both;
+  }
 }
 
 /* Stagger the stat blocks */
