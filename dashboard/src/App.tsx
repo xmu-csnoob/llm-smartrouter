@@ -9,6 +9,7 @@ import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from 
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
+import { GSPanel } from './components/GSPanel'
 
 function Clock() {
   const [time, setTime] = useState(new Date())
@@ -33,6 +34,15 @@ function App() {
   const [nav, setNav] = useState<NavView>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null)
+
+  // ESC to exit fullscreen
+  useEffect(() => {
+    if (!fullscreenPanel) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreenPanel(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [fullscreenPanel])
 
   // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
@@ -276,11 +286,9 @@ function App() {
               </div>
             </header>
             <StatsCards stats={stats} onRefresh={refreshAll} />
-            <div className="gs-panel" style={{ flex: 1 }}>
-              <div className="gs-panel-body">
-                <ShadowPolicyPanel stats={stats} />
-              </div>
-            </div>
+            <GSPanel panelId="sp-full" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
+              <ShadowPolicyPanel stats={stats} />
+            </GSPanel>
           </div>
         ) : nav === 'analysis' ? (
           /* ── Analysis View ── */
@@ -296,11 +304,9 @@ function App() {
                 </button>
               </div>
             </header>
-            <div className="gs-panel" style={{ flex: 1 }}>
-              <div className="gs-panel-body">
-                <AnalysisPanel />
-              </div>
-            </div>
+            <GSPanel panelId="analysis-full" title={t('analysis.title')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
+              <AnalysisPanel />
+            </GSPanel>
           </div>
         ) : (
           /* ── Overview / Logs View ── */
@@ -332,45 +338,23 @@ function App() {
               {nav === 'overview' ? (
                 /* ── Overview: 4-panel grid ── */
                 <div className="middle-grid">
-                  {/* Model Distribution */}
-                  <div className="gs-panel distribution-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.modelDistribution')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <ModelChart stats={stats} onSliceClick={handleModelSelect} />
-                    </div>
-                  </div>
+                  <GSPanel panelId="model" title={t('chart.modelDistribution')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} className="distribution-panel">
+                    <ModelChart stats={stats} onSliceClick={handleModelSelect} />
+                  </GSPanel>
 
-                  {/* Latency Trend */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
-                    </div>
-                    <div className="gs-panel-body latency-chart-container">
+                  <GSPanel panelId="latency" title={t('chart.latencyTrend')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                    <div className="latency-chart-container">
                       <LatencyChart entries={allEntries} />
                     </div>
-                  </div>
+                  </GSPanel>
 
-                  {/* Intent & Difficulty Distribution */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.intentDifficulty')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <SemanticDistributionChart stats={stats} />
-                    </div>
-                  </div>
+                  <GSPanel panelId="intent-diff" title={t('chart.intentDifficulty')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                    <SemanticDistributionChart stats={stats} />
+                  </GSPanel>
 
-                  {/* Shadow Policy Summary */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('stats.shadowPolicy')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <ShadowPolicyPanel stats={stats} />
-                    </div>
-                  </div>
+                  <GSPanel panelId="shadow-policy" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                    <ShadowPolicyPanel stats={stats} />
+                  </GSPanel>
                 </div>
               ) : null}
 

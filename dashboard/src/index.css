@@ -397,6 +397,7 @@
   overflow: hidden;
   position: relative;
   backdrop-filter: blur(8px);
+  cursor: zoom-in;
 }
 
 .gs-panel::before {
@@ -441,6 +442,59 @@
 
 .gs-panel-body {
   padding: 1rem;
+}
+
+/* ── Fullscreen button ── */
+.panel-fullscreen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 150ms;
+  opacity: 0;
+  margin-left: auto;
+}
+.gs-panel:hover .panel-fullscreen-btn {
+  opacity: 1;
+}
+.panel-fullscreen-btn:hover {
+  background: var(--muted);
+  color: var(--primary);
+}
+
+/* ── Fullscreen overlay ── */
+.gs-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(225 45% 6% / 0.85);
+  backdrop-filter: blur(12px);
+  animation: fade-in 150ms ease-out;
+}
+.gs-panel--fullscreen {
+  position: relative;
+  z-index: 101;
+  width: min(90vw, 1100px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px hsl(185 80% 50% / 0.15), 0 8px 48px hsl(0 0% 0% / 0.6), 0 0 80px hsl(185 80% 50% / 0.05);
+  cursor: default;
+  border-radius: 12px;
+}
+.gs-panel--fullscreen .gs-panel-body {
+  flex: 1;
+  overflow: auto;
 }
 
 /* ═══════════════════════════════════════
