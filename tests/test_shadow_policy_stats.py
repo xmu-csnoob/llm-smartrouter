@@ -250,6 +250,30 @@ class TestShadowPolicyStatsAggregation(unittest.TestCase):
         result = aggregate_shadow_policy_stats(entries, True, 24)
         self.assertEqual(result["mode_counts"]["unknown_mode"], 1)
 
+    def test_observe_only_entries_have_no_shadow_latency(self):
+        entries = [
+            entry(latency_ms=100.0, shadow_policy_decision=sp(mode="observe_only")),
+            entry(latency_ms=200.0, shadow_policy_decision=sp(mode="observe_only")),
+        ]
+        result = aggregate_shadow_policy_stats(entries, True, 24)
+        self.assertIsNone(result["avg_latency_shadow_ms"])
+        self.assertIsNone(result["p50_shadow_ms"])
+        self.assertIsNone(result["p95_shadow_ms"])
+        # Primary latency should be set
+        self.assertEqual(result["avg_latency_primary_ms"], 150.0)
+
+    def test_forced_lower_tier_only_has_no_primary_latency(self):
+        entries = [
+            entry(latency_ms=100.0, shadow_policy_decision=sp(mode="forced_lower_tier")),
+            entry(latency_ms=200.0, shadow_policy_decision=sp(mode="forced_lower_tier")),
+        ]
+        result = aggregate_shadow_policy_stats(entries, True, 24)
+        self.assertIsNone(result["avg_latency_primary_ms"])
+        self.assertIsNone(result["p50_primary_ms"])
+        self.assertIsNone(result["p95_primary_ms"])
+        # Shadow latency should be set
+        self.assertEqual(result["avg_latency_shadow_ms"], 150.0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
