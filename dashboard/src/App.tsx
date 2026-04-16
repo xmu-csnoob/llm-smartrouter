@@ -38,6 +38,7 @@ import { StatusCodeDistribution } from './components/StatusCodeDistribution'
 import { TokenConsumptionPanel } from './components/TokenConsumptionPanel'
 import { ConversationLengthPanel } from './components/ConversationLengthPanel'
 import { TierConstraintMonitor } from './components/TierConstraintMonitor'
+import { TierLoadBalancer } from './components/TierLoadBalancer'
 import { ErrorPatternPanel } from './components/ErrorPatternPanel'
 import { ProviderHealthPanel } from './components/ProviderHealthPanel'
 import { TTFTSpikeDetector } from './components/TTFTSpikeDetector'
@@ -390,6 +391,7 @@ function App() {
               <TokenConsumptionPanel entries={allEntries} />
               <ConversationLengthPanel entries={allEntries} />
               <TierConstraintMonitor entries={allEntries} />
+              <TierLoadBalancer entries={allEntries} />
               <ErrorPatternPanel entries={allEntries} />
               <ProviderHealthPanel entries={allEntries} />
               <TTFTSpikeDetector entries={allEntries} />
