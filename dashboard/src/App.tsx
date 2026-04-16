@@ -61,6 +61,7 @@ import { MLFeatureAttributionMatrix } from './components/MLFeatureAttributionMat
 import { RoutingRuleLeaderboard } from './components/RoutingRuleLeaderboard'
 import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
 import { ErrorMessageCluster } from './components/ErrorMessageCluster'
+import { IntentFlowMonitor } from './components/IntentFlowMonitor'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -432,6 +433,7 @@ function App() {
               <MLFeatureAttributionMatrix entries={allEntries} />
               <RoutingRuleLeaderboard entries={allEntries} />
               <ErrorMessageCluster entries={allEntries} />
+              <IntentFlowMonitor entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
