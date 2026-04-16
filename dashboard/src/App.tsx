@@ -56,6 +56,7 @@ import { TokenEstimateDriftAnalyzer } from './components/TokenEstimateDriftAnaly
 import { ProviderRateLimitTracker } from './components/ProviderRateLimitTracker'
 import { AmbientStatusBeaconStrip } from './components/AmbientStatusBeaconStrip'
 import { AlertCorrelationMatrix } from './components/AlertCorrelationMatrix'
+import { IntentDifficultyCorrelationMatrix } from './components/IntentDifficultyCorrelationMatrix'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -423,6 +424,7 @@ function App() {
               <TokenEstimateDriftAnalyzer entries={allEntries} />
               <ProviderRateLimitTracker entries={allEntries} />
               <AlertCorrelationMatrix entries={allEntries} />
+              <IntentDifficultyCorrelationMatrix entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
