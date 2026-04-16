@@ -1,5 +1,6 @@
 import { useI18n } from '@/i18n'
 import type { LogEntry } from '@/hooks/useApi'
+import { LatencySparkline } from './LatencySparkline'
 
 interface Props {
   entries: LogEntry[]
@@ -144,10 +145,9 @@ export function RequestTable({ entries, total, offset, limit, onPageChange, onRo
 
                 {/* Latency */}
                 <td style={{ textAlign: 'right' }}>
-                  <span className="cell-mono" style={{ color: entry.latency_ms && entry.latency_ms > 5000 ? 'hsl(0 72% 50%)' : 'var(--foreground)' }}>
-                    {entry.latency_ms != null ? `${entry.latency_ms}` : '—'}
-                    <span style={{ fontSize: '9px', color: 'var(--muted-foreground)' }}>ms</span>
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.125rem' }}>
+                    <LatencySparkline entries={entries} value={entry.latency_ms} />
+                  </div>
                 </td>
 
                 {/* TTFT */}
