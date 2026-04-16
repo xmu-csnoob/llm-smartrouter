@@ -13,6 +13,7 @@ import { TokenEstimateHistogram } from './components/TokenEstimateHistogram'
 import { TierHealthTimeline } from './components/TierHealthTimeline'
 import { TrafficHeatmap } from './components/TrafficHeatmap'
 import { TierRadar } from './components/TierRadar'
+import { ShadowDiscrepancyFeed } from './components/ShadowDiscrepancyFeed'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -342,6 +343,9 @@ function App() {
               <AnalysisPanel />
             </GSPanel>
             <div className="analysis-grid">
+              <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <ShadowDiscrepancyFeed entries={allEntries} />
+              </GSPanel>
               <GSPanel panelId="tier-confusion" title="Tier Confusion Matrix" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierConfusionMatrix entries={allEntries} />
               </GSPanel>
