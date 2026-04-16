@@ -26,7 +26,7 @@ function Clock() {
   )
 }
 
-type NavView = 'overview' | 'logs' | 'archive'
+type NavView = 'overview' | 'logs' | 'shadow-policy' | 'analysis'
 
 function App() {
   const { t, locale, setLocale } = useI18n()
@@ -162,11 +162,25 @@ function App() {
             {t('app.overview')}
           </button>
           <button
-            className={`sidebar-nav-item ${nav === 'logs' ? 'active' : ''}`}
+            className={`sidebar-nav-item ${nav === 'logs' && !selectedModel ? 'active' : ''}`}
             onClick={() => { setNav('logs'); handleBack(); }}
           >
             <Database className="nav-icon" size={16} />
             {t('app.allRequests')}
+          </button>
+          <button
+            className={`sidebar-nav-item ${nav === 'shadow-policy' && !selectedModel ? 'active' : ''}`}
+            onClick={() => { setNav('shadow-policy'); handleBack(); }}
+          >
+            <span className="nav-icon" style={{ fontFamily: 'var(--font-mono)', fontSize: '10px' }}>SP</span>
+            {t('stats.shadowPolicy')}
+          </button>
+          <button
+            className={`sidebar-nav-item ${nav === 'analysis' && !selectedModel ? 'active' : ''}`}
+            onClick={() => { setNav('analysis'); handleBack(); }}
+          >
+            <span className="nav-icon" style={{ fontFamily: 'var(--font-mono)', fontSize: '10px' }}>AI</span>
+            {t('analysis.title')}
           </button>
           <button
             className="sidebar-nav-item"
@@ -247,18 +261,57 @@ function App() {
               />
             </div>
           </div>
+        ) : nav === 'shadow-policy' ? (
+          /* ── Shadow Policy View ── */
+          <div className="app-content">
+            <header className="app-header">
+              <div className="flex items-center gap-3">
+                <button className="back-btn" onClick={() => setNav('overview')}>← {t('app.overview')}</button>
+                <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>{t('stats.shadowPolicy')}</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
+                </button>
+              </div>
+            </header>
+            <StatsCards stats={stats} onRefresh={refreshAll} />
+            <div className="gs-panel" style={{ flex: 1 }}>
+              <div className="gs-panel-body">
+                <ShadowPolicyPanel stats={stats} />
+              </div>
+            </div>
+          </div>
+        ) : nav === 'analysis' ? (
+          /* ── Analysis View ── */
+          <div className="app-content">
+            <header className="app-header">
+              <div className="flex items-center gap-3">
+                <button className="back-btn" onClick={() => setNav('overview')}>← {t('app.overview')}</button>
+                <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>{t('analysis.title')}</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
+                </button>
+              </div>
+            </header>
+            <div className="gs-panel" style={{ flex: 1 }}>
+              <div className="gs-panel-body">
+                <AnalysisPanel />
+              </div>
+            </div>
+          </div>
         ) : (
           /* ── Overview / Logs View ── */
           <>
             <header className="app-header">
               <div className="flex items-center gap-3">
-                {nav !== 'overview' && (
-                  <button className="back-btn" onClick={() => setNav('overview')}>
-                    ← {t('app.overview')}
-                  </button>
+                {nav === 'logs' && (
+                  <button className="back-btn" onClick={() => setNav('overview')}>← {t('app.overview')}</button>
                 )}
                 <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : t('app.title')}
+                  {nav === 'overview' ? t('app.title') : t('app.allRequests')}
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginLeft: '0.5rem', padding: '0.2rem 0.625rem', background: 'hsl(145 65% 45% / 0.1)', border: '1px solid hsl(145 65% 45% / 0.25)', borderRadius: '4px', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.1em', color: 'hsl(145 65% 60%)' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'hsl(145 65% 55%)', boxShadow: '0 0 6px hsl(145 65% 55%)', animation: 'pulse-dot 2.5s ease-in-out infinite', display: 'inline-block' }} />
@@ -266,10 +319,7 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={refreshAll}
-                  style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
-                >
+                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                   <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
                 </button>
               </div>
@@ -280,7 +330,7 @@ function App() {
               <StatsCards stats={stats} onRefresh={refreshAll} />
 
               {nav === 'overview' ? (
-                /* ── Overview: 3-column middle grid ── */
+                /* ── Overview: 4-panel grid ── */
                 <div className="middle-grid">
                   {/* Model Distribution */}
                   <div className="gs-panel distribution-panel">
@@ -302,16 +352,6 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Analysis Panel */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('analysis.title')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <AnalysisPanel />
-                    </div>
-                  </div>
-
                   {/* Intent & Difficulty Distribution */}
                   <div className="gs-panel">
                     <div className="gs-panel-header">
@@ -322,7 +362,7 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Shadow Policy Panel */}
+                  {/* Shadow Policy Summary */}
                   <div className="gs-panel">
                     <div className="gs-panel-header">
                       <span className="gs-eyebrow">{t('stats.shadowPolicy')}</span>
