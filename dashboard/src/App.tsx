@@ -9,6 +9,7 @@ import { RoutingHealthBoard } from './components/RoutingHealthBoard'
 import { RoutingDecisionDrawer } from './components/RoutingDecisionDrawer'
 import { TierConfusionMatrix } from './components/TierConfusionMatrix'
 import { ErrorBurstDetector } from './components/ErrorBurstDetector'
+import { TokenEstimateHistogram } from './components/TokenEstimateHistogram'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -349,6 +350,9 @@ function App() {
               </GSPanel>
               <GSPanel panelId="health-board" title="Routing Health" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <RoutingHealthBoard stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="token-histogram" title="Token Distribution" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TokenEstimateHistogram entries={allEntries} />
               </GSPanel>
             </div>
           </div>
