@@ -198,6 +198,9 @@ class StreamProxy:
             "is_stream": is_stream,
             "status": 200,
             "error": None,
+            "input_tokens": None,
+            "output_tokens": None,
+            "cost": None,
         }
 
         # --- Schema v3: enrich log entry with semantic features ---
@@ -369,6 +372,9 @@ class StreamProxy:
                     elapsed_ms = (time.monotonic() - start) * 1000
                     self.tracker.record(model_id, elapsed_ms, success=True)
                     log_entry["latency_ms"] = round(elapsed_ms)
+                    log_entry["input_tokens"] = estimated_input
+                    log_entry["output_tokens"] = output_tokens_cumulative
+                    log_entry["cost"] = round((estimated_input / 1_000_000 * input_cost_per_m) + (output_tokens_cumulative / 1_000_000 * output_cost_per_m), 6)
                     self.req_logger.log(log_entry)
                     logger.debug(f"Stream completed: {model_id} in {elapsed_ms:.0f}ms")
             except Exception as e:
@@ -426,7 +432,8 @@ class StreamProxy:
                 usage = resp_data.get("usage", {})
                 input_tokens_val = usage.get("input_tokens", estimated_input)
                 output_tokens_val = usage.get("output_tokens", 0)
-                estimated_cost = f"{(input_tokens_val / 1_000_000 * input_cost_per_m) + (output_tokens_val / 1_000_000 * output_cost_per_m):.4f}"
+                actual_cost = (input_tokens_val / 1_000_000 * input_cost_per_m) + (output_tokens_val / 1_000_000 * output_cost_per_m)
+                estimated_cost = f"{actual_cost:.4f}"
             except Exception:
                 pass
 
@@ -440,6 +447,15 @@ class StreamProxy:
             self.req_logger.log(log_entry)
             logger.error(f"Upstream error {resp.status_code}: {resp.text[:300]}")
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+        # Record actual token usage and cost in log entry
+        log_entry["input_tokens"] = input_tokens_val
+        log_entry["output_tokens"] = output_tokens_val
+        if resp.status_code == 200:
+            try:
+                log_entry["cost"] = round(actual_cost, 6)
+            except NameError:
+                log_entry["cost"] = None
 
         logger.debug(f"Request completed: {model_id} in {elapsed_ms:.0f}ms")
         self.req_logger.log(log_entry)

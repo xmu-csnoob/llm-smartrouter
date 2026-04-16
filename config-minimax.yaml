@@ -79,6 +79,14 @@ ml_routing:
   enabled: false
   manifest_path: "./models/manifest.json"
 
+# ===== Cost Configuration =====
+# Per-model cost rates (set per model in models section below).
+# cost_weight: 0.0 = disabled, > 0 = prefer cheaper models within tier.
+cost:
+  cost_weight: 0.0
+  input_cost_per_million: 3.5
+  output_cost_per_million: 18.0
+
 # ===== Shadow Policy =====
 shadow_policy:
   enabled: false

@@ -76,10 +76,14 @@ class RouterConfig:
         self.model_registry = {}
         for tier, model_list in self.models.items():
             for m in model_list:
-                self.model_registry[m["id"]] = {
+                entry = {
                     "provider": m["provider"],
                     "tier": tier,
                 }
+                # Include per-model cost rates if specified
+                if "cost_per_million" in m:
+                    entry["cost_per_million"] = m["cost_per_million"]
+                self.model_registry[m["id"]] = entry
 
         self.rules = self._raw.get("rules", [])
         self.fallback = self._raw.get("fallback", {})
@@ -145,6 +149,18 @@ class RouterConfig:
             "input_cost_per_million": cfg.get("input_cost_per_million", 3.5),
             "output_cost_per_million": cfg.get("output_cost_per_million", 18.0),
         }
+
+    @property
+    def cost_weight(self) -> float:
+        """Return cost weight for cost-aware model selection (0.0 = disabled)."""
+        # Check ml_routing section first, then cost section
+        weight = self.ml_routing.get("cost_weight")
+        if weight is not None:
+            return float(weight)
+        weight = self._raw.get("cost", {}).get("cost_weight")
+        if weight is not None:
+            return float(weight)
+        return 0.0
 
     @property
     def shadow_policy_config(self) -> dict:

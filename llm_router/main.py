@@ -1,6 +1,7 @@
 """FastAPI application — OpenAI-compatible API proxy."""
 
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 import os
@@ -104,6 +105,38 @@ def _build_analysis_snapshot(entries: list[dict]) -> dict:
         "observability_only_count": observability_only_count,
         "outlier_info": outlier_info,
     }
+
+
+def _compute_entry_cost(entry: dict, config: RouterConfig) -> float | None:
+    """Compute cost for a single log entry using per-model or global cost rates."""
+    input_tokens = entry.get("input_tokens")
+    output_tokens = entry.get("output_tokens")
+
+    # If we have actual token counts, use them
+    if input_tokens is not None and output_tokens is not None:
+        input_t = input_tokens
+        output_t = output_tokens
+    else:
+        # Fall back to estimated_tokens for input, 0 for output
+        input_t = entry.get("estimated_tokens")
+        output_t = entry.get("output_tokens") if entry.get("output_tokens") is not None else 0
+
+    if input_t is None:
+        return None
+
+    # Get per-model cost rates
+    model_id = entry.get("routed_model")
+    model_info = config.model_registry.get(model_id, {}) if model_id else {}
+    cost_rates = model_info.get("cost_per_million")
+
+    if cost_rates:
+        input_rate = cost_rates.get("input", config.cost_config["input_cost_per_million"])
+        output_rate = cost_rates.get("output", config.cost_config["output_cost_per_million"])
+    else:
+        input_rate = config.cost_config["input_cost_per_million"]
+        output_rate = config.cost_config["output_cost_per_million"]
+
+    return (input_t * input_rate + output_t * output_rate) / 1_000_000
 
 
 def create_app(config: RouterConfig) -> FastAPI:
@@ -257,6 +290,116 @@ def create_app(config: RouterConfig) -> FastAPI:
             "changed": changed,
             "change_rate": round(changed / len(replay_entries) * 100, 1) if replay_entries else 0,
             "entries": replay_entries,
+        }
+
+    @app.get("/api/logs/cost-breakdown")
+    async def cost_breakdown(window: str = "24h", api_key: str | None = None):
+        """Aggregate cost from request logs over a time window.
+
+        Query params:
+        - window: time window (default "24h", options: "1h", "24h", "7d", "30d")
+        - api_key: filter by API key (optional)
+        """
+        window_map = {
+            "1h": 1,
+            "24h": 24,
+            "7d": 24 * 7,
+            "30d": 24 * 30,
+        }
+        hours = window_map.get(window)
+        if hours is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Invalid window '{window}'. Options: 1h, 24h, 7d, 30d"},
+            )
+
+        # Stream through log files and aggregate costs
+        total_cost = 0.0
+        by_tier: dict[str, float] = {}
+        by_model: dict[str, float] = {}
+        by_api_key: dict[str, float] = {}
+        entries_count = 0
+
+        log_dir = Path(config.logging_config["dir"])
+        archive_dir = log_dir / config.logging_config["archive_dir"]
+        cutoff = datetime.now(timezone.utc).timestamp() - hours * 3600
+
+        # Determine which date-based files to read based on window
+        if window == "1h":
+            # Only read today's file
+            date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            file_pattern = f"requests-{date_str}.jsonl"
+            log_files = [log_dir / file_pattern] if (log_dir / file_pattern).exists() else []
+        elif window == "24h":
+            # Read today's and yesterday's files
+            today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            yesterday = today - timedelta(days=1)
+            log_files = []
+            for i in range(2):
+                date = today if i == 0 else yesterday
+                date_str = date.strftime("%Y-%m-%d")
+                p = log_dir / f"requests-{date_str}.jsonl"
+                if p.exists():
+                    log_files.append(p)
+        else:
+            # For longer windows, read all matching files
+            # Use glob pattern to find relevant files
+            log_files = list(log_dir.glob("requests-*.jsonl"))
+            log_files = [f for f in log_files if archive_dir not in f.parents and f.parent != archive_dir]
+
+        for log_file in sorted(log_files):
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            entry = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+
+                        # Filter by time window using timestamp
+                        ts = entry.get("timestamp", "")
+                        if ts:
+                            try:
+                                entry_time = datetime.fromisoformat(ts).timestamp()
+                                if entry_time < cutoff:
+                                    continue
+                            except (ValueError, OSError):
+                                pass
+
+                        # Filter by API key if specified
+                        if api_key and entry.get("client_api_key") != api_key:
+                            continue
+
+                        # Only count successful requests
+                        if entry.get("status") != 200:
+                            continue
+
+                        # Calculate cost for this entry
+                        cost = _compute_entry_cost(entry, config)
+                        if cost is not None:
+                            total_cost += cost
+                            entries_count += 1
+
+                            model_id = entry.get("routed_model", "unknown")
+                            tier = entry.get("routed_tier", "unknown")
+                            key = entry.get("client_api_key") or "anonymous"
+
+                            by_model[model_id] = by_model.get(model_id, 0.0) + cost
+                            by_tier[tier] = by_tier.get(tier, 0.0) + cost
+                            by_api_key[key] = by_api_key.get(key, 0.0) + cost
+            except (OSError, IOError):
+                continue
+
+        return {
+            "window": window,
+            "entries_count": entries_count,
+            "total_cost": round(total_cost, 4),
+            "by_tier": {k: round(v, 4) for k, v in sorted(by_tier.items())},
+            "by_model": {k: round(v, 4) for k, v in sorted(by_model.items())},
+            "by_api_key": {k: round(v, 4) for k, v in sorted(by_api_key.items())},
         }
 
     # --- LLM Analysis Endpoint ---

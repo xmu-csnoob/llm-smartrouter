@@ -292,6 +292,8 @@ class Router:
 
     def _score_model_candidates(self, tier: str) -> list[dict[str, Any]]:
         candidates: list[dict[str, Any]] = []
+        cost_weight = self.config.cost_weight
+
         for model_entry in self.config.models.get(tier, []):
             model_id = model_entry["id"]
             if not self.tracker.is_available(model_id):
@@ -302,14 +304,34 @@ class Router:
             consecutive_errors = self.tracker.get_consecutive_errors(model_id)
             selection_score = self._compute_model_selection_score(avg_latency, avg_ttft, consecutive_errors)
 
+            # Compute cost efficiency for cost-aware selection
+            cost_efficiency = 1.0
+            if cost_weight > 0:
+                cost_efficiency = self._compute_cost_efficiency(model_id, tier)
+
+            # Apply cost efficiency as a multiplier to the selection score
+            adjusted_score = selection_score * (1.0 + cost_weight * cost_efficiency)
+
             candidates.append({
                 "id": model_id,
                 "provider": model_entry["provider"],
-                "selection_score": round(selection_score, 2),
+                "selection_score": round(adjusted_score, 2),
+                "base_selection_score": round(selection_score, 2),
+                "cost_efficiency": round(cost_efficiency, 4),
                 "avg_latency_ms": round(avg_latency, 1) if avg_latency is not None else None,
                 "avg_ttft_ms": round(avg_ttft, 1) if avg_ttft is not None else None,
                 "consecutive_errors": consecutive_errors,
             })
+
+        if cost_weight > 0 and len(candidates) > 1:
+            # Normalize cost efficiency within tier: most efficient = 1.0
+            # cost_efficiency values are 1/avg_cost, so higher = more efficient
+            efficiencies = [c["cost_efficiency"] for c in candidates]
+            max_eff = max(efficiencies)
+            if max_eff > 0:
+                for c in candidates:
+                    c["cost_efficiency"] = round(c["cost_efficiency"] / max_eff, 4)
+                    c["selection_score"] = round(c["base_selection_score"] * (1.0 + cost_weight * c["cost_efficiency"]), 2)
 
         candidates.sort(
             key=lambda item: (
@@ -320,6 +342,29 @@ class Router:
             )
         )
         return candidates
+
+    def _compute_cost_efficiency(self, model_id: str, tier: str) -> float:
+        """Compute cost efficiency for a model: higher = cheaper.
+
+        Returns 1 / avg_cost_per_token, using per-model rates from config
+        or global defaults from cost_config.
+        """
+        # Get per-model cost rates if specified, otherwise use global defaults
+        model_info = self.config.model_registry.get(model_id, {})
+        cost_rates = model_info.get("cost_per_million")
+        if cost_rates:
+            input_rate = cost_rates.get("input", self.config.cost_config["input_cost_per_million"])
+            output_rate = cost_rates.get("output", self.config.cost_config["output_cost_per_million"])
+        else:
+            input_rate = self.config.cost_config["input_cost_per_million"]
+            output_rate = self.config.cost_config["output_cost_per_million"]
+
+        # Assume average 30% output/input ratio for cost estimation
+        avg_output_ratio = 0.3
+        avg_cost_per_token = (input_rate + output_rate * avg_output_ratio) / 1_000_000
+        if avg_cost_per_token <= 0:
+            return 0.0
+        return 1.0 / avg_cost_per_token
 
     def _compute_model_selection_score(
         self,
