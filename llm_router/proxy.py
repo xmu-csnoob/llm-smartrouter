@@ -285,6 +285,17 @@ class StreamProxy:
                             log_entry["ttft_ms"] = round(ttft_ms)
                             self.tracker.record_ttft(model_id, ttft_ms)
                             ttft_recorded = True
+                        # Parse SSE data block for usage (Anthropic sends usage in a final data block after message_stop)
+                        if line.startswith("data: "):
+                            try:
+                                data = json.loads(line[6:])
+                                if isinstance(data, dict) and "usage" in data:
+                                    u = data["usage"]
+                                    log_entry["input_tokens"] = u.get("input_tokens")
+                                    log_entry["output_tokens"] = u.get("output_tokens")
+                                    log_entry["cost"] = u.get("cost")
+                            except Exception:
+                                pass
                         yield line + "\n\n"
 
                     elapsed_ms = (time.monotonic() - start) * 1000
@@ -334,6 +345,17 @@ class StreamProxy:
             self.req_logger.log(log_entry)
             logger.error(f"Upstream error {resp.status_code}: {resp.text[:300]}")
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+        # Extract token usage from response
+        try:
+            resp_data = resp.json()
+            usage = resp_data.get("usage", {})
+            log_entry["input_tokens"] = usage.get("input_tokens")
+            log_entry["output_tokens"] = usage.get("output_tokens")
+            # cost may be provided by some providers (e.g., OpenAI-compatible)
+            log_entry["cost"] = usage.get("cost")
+        except Exception:
+            pass
 
         logger.debug(f"Request completed: {model_id} in {elapsed_ms:.0f}ms")
         self.req_logger.log(log_entry)
