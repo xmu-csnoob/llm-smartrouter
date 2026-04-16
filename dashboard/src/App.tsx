@@ -42,6 +42,7 @@ import { TierLoadBalancer } from './components/TierLoadBalancer'
 import { ErrorPatternPanel } from './components/ErrorPatternPanel'
 import { ProviderHealthPanel } from './components/ProviderHealthPanel'
 import { TTFTSpikeDetector } from './components/TTFTSpikeDetector'
+import { StreamingThroughputGauge } from './components/StreamingThroughputGauge'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -395,6 +396,7 @@ function App() {
               <ErrorPatternPanel entries={allEntries} />
               <ProviderHealthPanel entries={allEntries} />
               <TTFTSpikeDetector entries={allEntries} />
+              <StreamingThroughputGauge entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
