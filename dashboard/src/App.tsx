@@ -67,6 +67,7 @@ import { RoutingEntropyPanel } from './components/RoutingEntropyPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { FallbackChainExplorer } from './components/FallbackChainExplorer'
+import { DifficultyHeatmapPanel } from './components/DifficultyHeatmapPanel'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
 import { GSPanel } from './components/GSPanel'
@@ -439,6 +440,7 @@ function App() {
               <IntentFlowMonitor entries={allEntries} />
               <RoutingEntropyPanel entries={allEntries} />
               <FallbackChainExplorer entries={allEntries} />
+              <DifficultyHeatmapPanel entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
