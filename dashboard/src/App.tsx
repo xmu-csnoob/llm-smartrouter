@@ -20,6 +20,7 @@ import { CostAttributionMeter } from './components/CostAttributionMeter'
 import { ModelHealthLeaderboard } from './components/ModelHealthLeaderboard'
 import { IntentLatencyBreakdown } from './components/IntentLatencyBreakdown'
 import { FallbackCascadeDiagram } from './components/FallbackCascadeDiagram'
+import { RoutingAmbiguityIndicator } from './components/RoutingAmbiguityIndicator'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -355,6 +356,7 @@ function App() {
               <ModelHealthLeaderboard stats={stats} />
               <IntentLatencyBreakdown stats={stats} />
               <FallbackCascadeDiagram entries={allEntries} />
+              <RoutingAmbiguityIndicator entries={allEntries} />
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>
