@@ -53,6 +53,7 @@ import { OutputTruncationRiskAdvisor } from './components/OutputTruncationRiskAd
 import { RoutingRegressionDetector } from './components/RoutingRegressionDetector'
 import { LatencyJitterDetector } from './components/LatencyJitterDetector'
 import { TokenEstimateDriftAnalyzer } from './components/TokenEstimateDriftAnalyzer'
+import { ProviderRateLimitTracker } from './components/ProviderRateLimitTracker'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -417,6 +418,7 @@ function App() {
               <RoutingRegressionDetector entries={allEntries} />
               <LatencyJitterDetector entries={allEntries} />
               <TokenEstimateDriftAnalyzer entries={allEntries} />
+              <ProviderRateLimitTracker entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
