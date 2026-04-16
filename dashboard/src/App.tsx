@@ -11,6 +11,7 @@ import { TierConfusionMatrix } from './components/TierConfusionMatrix'
 import { ErrorBurstDetector } from './components/ErrorBurstDetector'
 import { TokenEstimateHistogram } from './components/TokenEstimateHistogram'
 import { TierHealthTimeline } from './components/TierHealthTimeline'
+import { TrafficHeatmap } from './components/TrafficHeatmap'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -357,6 +358,9 @@ function App() {
               </GSPanel>
               <GSPanel panelId="health-timeline" title="Model Health Timeline" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierHealthTimeline entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="traffic-heatmap" title="Traffic Heatmap" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TrafficHeatmap entries={allEntries} />
               </GSPanel>
             </div>
           </div>
