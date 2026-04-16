@@ -186,3 +186,25 @@ export async function analyzeLogs(
     }
   }
 }
+
+export interface KeyStats {
+  count: number;
+  errors: number;
+  error_rate: number;
+  avg_latency_ms: number | null;
+  models: Record<string, number>;
+  tiers: Record<string, number>;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cost: number;
+}
+
+export interface KeyStatsResponse {
+  window_hours: number;
+  keys: Record<string, KeyStats>;
+}
+
+export async function fetchKeyStats(hours = 24): Promise<KeyStatsResponse> {
+  const res = await fetch(`${API_BASE}/logs/keys?hours=${hours}`);
+  return res.json();
+}

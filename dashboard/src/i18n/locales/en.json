@@ -4,7 +4,24 @@
     "allModels": "All Models",
     "recentRequests": "Recent Requests",
     "allRequests": "All Requests",
-    "overview": "Overview"
+    "overview": "Overview",
+    "apiKeys": "API Keys"
+  },
+  "keys": {
+    "totalRequests": "Total Requests",
+    "totalInputTokens": "Input Tokens",
+    "totalOutputTokens": "Output Tokens",
+    "totalCost": "Total Cost",
+    "noData": "No API key usage data yet",
+    "apiKey": "API Key",
+    "requests": "Requests",
+    "errorRate": "Error Rate",
+    "avgLatency": "Avg Latency",
+    "models": "Models",
+    "tiers": "Tiers",
+    "inputTokens": "Input",
+    "outputTokens": "Output",
+    "cost": "Cost"
   },
   "stats": {
     "totalRequests": "Total Requests",

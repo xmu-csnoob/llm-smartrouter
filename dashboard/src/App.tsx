@@ -4,17 +4,19 @@ import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
-import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
+import { KeyStatsTable } from './components/KeyStatsTable'
+import { fetchRecent, fetchStats, archiveLogs, fetchKeyStats, type LogEntry, type Stats, type KeyStatsResponse } from './hooks/useApi'
 import { useI18n } from './i18n'
-import { LayoutDashboard, Database, Archive, Globe } from 'lucide-react'
+import { LayoutDashboard, Database, Archive, Globe, Key } from 'lucide-react'
 
-type NavView = 'overview' | 'logs' | 'archive'
+type NavView = 'overview' | 'logs' | 'keys'
 
 function App() {
   const { t, locale, setLocale } = useI18n()
   const [nav, setNav] = useState<NavView>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [keyStats, setKeyStats] = useState<KeyStatsResponse | null>(null)
 
   // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
@@ -74,6 +76,19 @@ function App() {
     const interval = setInterval(load, 10000)
     return () => clearInterval(interval)
   }, [selectedModel, currentModelPage])
+
+  // Load key stats
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const ks = await fetchKeyStats()
+        setKeyStats(ks)
+      } catch {}
+    }
+    load()
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleModelSelect = (model: string) => {
     setSelectedModel(model)
@@ -149,6 +164,13 @@ function App() {
           >
             <Database className="nav-icon" size={16} />
             {t('app.allRequests')}
+          </button>
+          <button
+            className={`sidebar-nav-item ${nav === 'keys' ? 'active' : ''}`}
+            onClick={() => { setNav('keys'); handleBack(); }}
+          >
+            <Key className="nav-icon" size={16} />
+            {t('app.apiKeys')}
           </button>
           <button
             className="sidebar-nav-item"
@@ -238,7 +260,7 @@ function App() {
                   </button>
                 )}
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : t('app.title')}
+                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : nav === 'keys' ? t('app.apiKeys') : t('app.title')}
                 </h1>
               </div>
               <div className="flex items-center gap-2">
@@ -252,62 +274,84 @@ function App() {
             </header>
 
             <div className="app-content">
-              {/* Stats Row */}
-              <StatsCards stats={stats} onRefresh={refreshAll} />
-
-              {nav === 'overview' ? (
-                /* ── Overview: 3-column middle grid ── */
-                <div className="middle-grid">
-                  {/* Model Distribution */}
-                  <div className="gs-panel distribution-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.modelDistribution')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <ModelChart stats={stats} onSliceClick={handleModelSelect} />
-                    </div>
+              {nav === 'keys' ? (
+                /* ── API Keys View ── */
+                <div className="gs-panel">
+                  <div className="gs-panel-header">
+                    <span className="gs-eyebrow">{t('app.apiKeys')}</span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {keyStats ? `${Object.keys(keyStats.keys).length} keys` : '...'}
+                    </span>
                   </div>
-
-                  {/* Latency Trend */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
-                    </div>
-                    <div className="gs-panel-body latency-chart-container">
-                      <LatencyChart entries={allEntries} />
-                    </div>
-                  </div>
-
-                  {/* Analysis Panel */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('analysis.title')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <AnalysisPanel />
-                    </div>
+                  <div className="gs-panel-body">
+                    {keyStats && (
+                      <KeyStatsTable
+                        keys={keyStats.keys}
+                        onKeyClick={() => { setNav('logs'); /* TODO: filter RequestTable by selected key once fetchRecent supports ?key= filter */ }}
+                      />
+                    )}
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  {/* Stats Row */}
+                  <StatsCards stats={stats} onRefresh={refreshAll} />
 
-              {/* All Requests Table */}
-              <div className="gs-panel request-table-panel">
-                <div className="gs-panel-header">
-                  <span className="gs-eyebrow">
-                    {nav === 'overview' ? t('app.recentRequests') : t('app.allRequests')}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {totalAllEntries.toLocaleString()} total
-                  </span>
-                </div>
-                <RequestTable
-                  entries={allEntries}
-                  total={totalAllEntries}
-                  offset={(currentAllPage - 1) * pageSize}
-                  limit={pageSize}
-                  onPageChange={handleAllPageChange}
-                />
-              </div>
+                  {nav === 'overview' ? (
+                    /* ── Overview: 3-column middle grid ── */
+                    <div className="middle-grid">
+                      {/* Model Distribution */}
+                      <div className="gs-panel distribution-panel">
+                        <div className="gs-panel-header">
+                          <span className="gs-eyebrow">{t('chart.modelDistribution')}</span>
+                        </div>
+                        <div className="gs-panel-body">
+                          <ModelChart stats={stats} onSliceClick={handleModelSelect} />
+                        </div>
+                      </div>
+
+                      {/* Latency Trend */}
+                      <div className="gs-panel">
+                        <div className="gs-panel-header">
+                          <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
+                        </div>
+                        <div className="gs-panel-body latency-chart-container">
+                          <LatencyChart entries={allEntries} />
+                        </div>
+                      </div>
+
+                      {/* Analysis Panel */}
+                      <div className="gs-panel">
+                        <div className="gs-panel-header">
+                          <span className="gs-eyebrow">{t('analysis.title')}</span>
+                        </div>
+                        <div className="gs-panel-body">
+                          <AnalysisPanel />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* All Requests Table */}
+                  <div className="gs-panel request-table-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">
+                        {nav === 'overview' ? t('app.recentRequests') : t('app.allRequests')}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {totalAllEntries.toLocaleString()} total
+                      </span>
+                    </div>
+                    <RequestTable
+                      entries={allEntries}
+                      total={totalAllEntries}
+                      offset={(currentAllPage - 1) * pageSize}
+                      limit={pageSize}
+                      onPageChange={handleAllPageChange}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}
