@@ -58,6 +58,7 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
               <th>{t('table.model')}</th>
               <th>{t('table.tier')}</th>
               <th>{t('table.rule')}</th>
+              <th>{t('table.intent')}</th>
               <th>{t('table.request')}</th>
               <th style={{ textAlign: 'right' }}>{t('table.latency')}</th>
               <th style={{ textAlign: 'right' }}>{t('table.ttft')}</th>
@@ -103,6 +104,27 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
                       </span>
                     )}
                   </div>
+                </td>
+
+                {/* Intent + Difficulty */}
+                <td>
+                  {entry.semantic_features?.intent ? (
+                    <div className="intent-badge">
+                      <span className="intent-name">{entry.semantic_features.intent}</span>
+                      <span
+                        className="difficulty-tag"
+                        data-difficulty={entry.semantic_features.difficulty}
+                      >
+                        {entry.semantic_features.difficulty}
+                      </span>
+                    </div>
+                  ) : entry.task_type ? (
+                    <span className="gs-badge gs-badge-neutral" style={{ alignSelf: 'flex-start' }}>
+                      {entry.task_type}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--muted-foreground)' }}>—</span>
+                  )}
                 </td>
 
                 {/* Request preview */}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useI18n } from '@/i18n'
 import type { Stats, ModelStats } from '@/hooks/useApi'
 import { archiveLogs } from '@/hooks/useApi'
-import { Activity, AlertTriangle, ArrowDownUp, CheckCircle } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowDownUp, CheckCircle, Database } from 'lucide-react'
 
 interface Props {
   stats: Stats | null
@@ -22,6 +22,14 @@ export function StatsCards({ stats, onRefresh }: Props) {
   const errorCount = stats?.errors ?? 0
   const fallbackCount = stats?.fallbacks ?? 0
 
+  // Schema v3 coverage
+  const featureSnapshotCount = stats?.feature_snapshot_count ?? 0
+  const schemaV3Coverage = total > 0 ? Math.round((featureSnapshotCount / total) * 100) : 0
+  const topIntentType = stats?.task_types
+    ? Object.entries(stats.task_types).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
+    : '—'
+  const intentTypeCount = stats?.task_types ? Object.keys(stats.task_types).length : 0
+
   const handleArchive = async () => {
     if (!window.confirm(t('stats.clearLogsConfirm'))) return
     setClearing(true)
@@ -38,7 +46,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
   }
 
   return (
-    <div className="stat-row">
+    <div className="stat-row" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
       {/* Total Requests */}
       <div className="stat-block">
         <div className="stat-block-accent" />
@@ -108,6 +116,24 @@ export function StatsCards({ stats, onRefresh }: Props) {
           >
             {clearing ? '...' : t('stats.clearLogs')}
           </button>
+        </div>
+      </div>
+
+      {/* Data Collection */}
+      <div className="stat-block">
+        <div className="stat-block-accent" style={{ background: 'hsl(280 60% 55%)' }} />
+        <div className="stat-block-label">
+          <Database size={10} />
+          {t('stats.dataCollection')}
+        </div>
+        <div className="stat-block-value" style={{ color: 'hsl(280 60% 55%)', fontSize: '1.25rem' }}>
+          {schemaV3Coverage}<span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--muted-foreground)', marginLeft: '2px' }}>%</span>
+        </div>
+        <div className="stat-block-sub">
+          v3: {featureSnapshotCount}/{total}
+        </div>
+        <div className="stat-block-sub" style={{ marginTop: '0.25rem' }}>
+          {topIntentType !== '—' ? `${topIntentType} (${t('stats.taskTypes', { count: intentTypeCount })})` : '—'}
         </div>
       </div>
     </div>
