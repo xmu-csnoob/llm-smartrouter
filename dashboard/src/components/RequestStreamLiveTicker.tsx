@@ -241,6 +241,9 @@ export function RequestStreamLiveTicker({ entries }: Props) {
         zIndex: 9,
       }} />
 
+      {/* Layer 5: Rolling scanline sweep — CRT electron beam refresh */}
+      <div aria-hidden="true" className="crt-sweep" />
+
       {/* ── HEADER ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>

@@ -1305,6 +1305,53 @@
   }
 }
 
+/* ─── CRT Ambient Animations ─── */
+@keyframes crt-flicker {
+  0%   { opacity: 1; }
+  92%  { opacity: 1; }
+  93%  { opacity: 0.94; }
+  94%  { opacity: 1; }
+  96%  { opacity: 0.97; }
+  97%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes crt-scanline-sweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  5%   { opacity: 0.6; }
+  95%  { opacity: 0.4; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes phosphor-trail {
+  0%   { text-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
+  50%  { text-shadow: 0 0 4px currentColor, 0 0 8px currentColor; }
+  100% { text-shadow: 0 0 1px currentColor; }
+}
+
+.crt-panel {
+  animation: fade-in-up 400ms ease both, crt-flicker 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .crt-panel .crt-sweep {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      hsl(145 65% 55% / 0.04) 40%,
+      hsl(145 65% 55% / 0.08) 50%,
+      hsl(145 65% 55% / 0.04) 60%,
+      transparent 100%
+    );
+    animation: crt-scanline-sweep 8s linear infinite;
+    pointer-events: none;
+    z-index: 15;
+  }
+}
+
 @keyframes ticker-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

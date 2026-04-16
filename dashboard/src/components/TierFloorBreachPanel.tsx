@@ -188,7 +188,7 @@ export function TierFloorBreachPanel({ entries }: { entries: LogEntry[] }) {
     )
   }
 
-  const { total, windowSize, floorCount, floorRate, breachCount, breachRate, tierFloorMap, minTierBreakdown, recentBreaches, constrainedErrorRate, freeErrorRate } = stats
+  const { total, windowSize, floorCount, floorRate, breachCount, tierFloorMap, minTierBreakdown, recentBreaches, constrainedErrorRate, freeErrorRate } = stats
 
   const tierColor = (tier: string) =>
     tier === 'tier1' ? 'hsl(280 65% 65%)'
