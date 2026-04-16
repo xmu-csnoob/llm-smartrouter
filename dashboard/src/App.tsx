@@ -54,6 +54,7 @@ import { RoutingRegressionDetector } from './components/RoutingRegressionDetecto
 import { LatencyJitterDetector } from './components/LatencyJitterDetector'
 import { TokenEstimateDriftAnalyzer } from './components/TokenEstimateDriftAnalyzer'
 import { ProviderRateLimitTracker } from './components/ProviderRateLimitTracker'
+import { AmbientStatusBeaconStrip } from './components/AmbientStatusBeaconStrip'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -382,6 +383,7 @@ function App() {
             <GSPanel panelId="analysis-full" title={t('analysis.title')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
               <AnalysisPanel />
             </GSPanel>
+            <AmbientStatusBeaconStrip entries={allEntries} />
             <div className="analysis-grid">
               <IntentDriftTicker stats={stats} />
               <TierCapacityThermometer stats={stats} />
