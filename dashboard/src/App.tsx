@@ -7,6 +7,7 @@ import { RequestTable } from './components/RequestTable'
 import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { TierTrafficFlow } from './components/TierTrafficFlow'
 import { RoutingHealthBoard } from './components/RoutingHealthBoard'
+import { RoutingDecisionDrawer } from './components/RoutingDecisionDrawer'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -39,6 +40,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null)
 
   // ESC to exit fullscreen
   useEffect(() => {
@@ -294,6 +296,7 @@ function App() {
                 offset={(currentModelPage - 1) * pageSize}
                 limit={pageSize}
                 onPageChange={handleModelPageChange}
+                onRowClick={setSelectedEntry}
               />
             </div>
           </div>
@@ -406,12 +409,18 @@ function App() {
                   offset={(currentAllPage - 1) * pageSize}
                   limit={pageSize}
                   onPageChange={handleAllPageChange}
+                  onRowClick={setSelectedEntry}
                 />
               </div>
             </div>
           </>
         )}
       </main>
+
+      <RoutingDecisionDrawer
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+      />
     </div>
   )
 }

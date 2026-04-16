@@ -880,6 +880,11 @@
   background: hsl(185 80% 50% / 0.03);
 }
 
+.table-row-clickable:hover td {
+  background: hsl(185 80% 50% / 0.06) !important;
+  cursor: pointer;
+}
+
 .data-table .cell-mono {
   font-family: var(--font-mono);
   font-size: 0.6875rem;

@@ -7,6 +7,7 @@ interface Props {
   offset: number
   limit: number
   onPageChange: (newOffset: number) => void
+  onRowClick?: (entry: LogEntry) => void
 }
 
 function formatTime(ts: string) {
@@ -34,7 +35,7 @@ function StatusBadge({ status }: { status: number }) {
   return <span className={cls}>{status}</span>
 }
 
-export function RequestTable({ entries, total, offset, limit, onPageChange }: Props) {
+export function RequestTable({ entries, total, offset, limit, onPageChange, onRowClick }: Props) {
   const { t } = useI18n()
 
   if (entries.length === 0 && total === 0) {
@@ -67,7 +68,12 @@ export function RequestTable({ entries, total, offset, limit, onPageChange }: Pr
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.request_id}>
+              <tr
+                key={entry.request_id}
+                onClick={() => onRowClick?.(entry)}
+                style={{ cursor: onRowClick ? 'pointer' : undefined }}
+                className={onRowClick ? 'table-row-clickable' : undefined}
+              >
                 {/* Time */}
                 <td className="cell-mono" style={{ color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
                   {formatTime(entry.timestamp)}
