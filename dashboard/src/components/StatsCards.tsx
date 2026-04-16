@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Stats, ModelStats } from '@/hooks/useApi'
 import { archiveLogs } from '@/hooks/useApi'
 import { useI18n } from '@/i18n'
@@ -12,6 +12,27 @@ interface Props {
 export function StatsCards({ stats, onRefresh }: Props) {
   const { t } = useI18n()
   const [clearing, setClearing] = useState(false)
+  const [flashIdx, setFlashIdx] = useState(0)
+
+  // Track previous stat values to trigger flash on change
+  const prevTotal = useRef(0)
+  const prevErrors = useRef(0)
+  const prevFallbacks = useRef(0)
+
+  useEffect(() => {
+    if (!stats) return
+    const changed = (
+      stats.total !== prevTotal.current ||
+      stats.errors !== prevErrors.current ||
+      stats.fallbacks !== prevFallbacks.current
+    )
+    if (changed && prevTotal.current !== 0) {
+      setFlashIdx(i => i + 1)
+    }
+    prevTotal.current = stats.total ?? 0
+    prevErrors.current = stats.errors ?? 0
+    prevFallbacks.current = stats.fallbacks ?? 0
+  }, [stats])
 
   const total = stats?.total ?? 0
   const avgLatency = stats?.avg_latency_ms != null ? `${stats.avg_latency_ms}` : '—'
@@ -46,7 +67,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
   return (
     <div className="stat-row" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
       {/* Total Requests */}
-      <div className="stat-block">
+      <div className="stat-block" data-flash={flashIdx > 0 ? "true" : undefined}>
         <div className="stat-block-label">
           <span className="label-dot" />
           {t('stats.totalRequests')}
@@ -59,7 +80,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
       </div>
 
       {/* Avg Latency */}
-      <div className="stat-block">
+      <div className="stat-block" data-flash={flashIdx > 0 ? "true" : undefined}>
         <div className="stat-block-label">
           <span className="label-dot" style={{ background: 'hsl(200 75% 55%)', boxShadow: '0 0 6px hsl(200 75% 55% / 0.4)' }} />
           {t('stats.avgLatency')}
@@ -74,7 +95,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
       </div>
 
       {/* Fallback Rate */}
-      <div className="stat-block">
+      <div className="stat-block" data-flash={flashIdx > 0 ? "true" : undefined}>
         <div className="stat-block-label">
           <span className="label-dot" style={{ background: 'hsl(145 65% 55%)', boxShadow: '0 0 6px hsl(145 65% 55% / 0.4)' }} />
           {t('stats.fallbackRate')}
@@ -89,7 +110,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
       </div>
 
       {/* Error Rate */}
-      <div className="stat-block">
+      <div className="stat-block" data-flash={flashIdx > 0 ? "true" : undefined}>
         <div className="stat-block-label">
           {errorCount > 0
             ? <span className="label-dot" style={{ background: 'hsl(0 72% 60%)', boxShadow: '0 0 6px hsl(0 72% 60% / 0.4)', animation: 'none' }} />
@@ -116,7 +137,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
       </div>
 
       {/* Data Collection */}
-      <div className="stat-block">
+      <div className="stat-block" data-flash={flashIdx > 0 ? "true" : undefined}>
         <div className="stat-block-label">
           <span className="label-dot" style={{ background: 'hsl(260 65% 65%)', boxShadow: '0 0 6px hsl(260 65% 65% / 0.4)' }} />
           {t('stats.dataCollection')}
