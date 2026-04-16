@@ -86,7 +86,7 @@ class RouterConfig:
         self.scoring = merge_scoring_config(self._raw.get("scoring"))
         self.server = self._raw.get("server", {})
         self.ml_routing = self._raw.get("ml_routing", {})
-        self.api_keys = self._raw.get("api_keys", {})  # api_key -> {allowed_tiers: [tier1, tier2]}
+        self.api_keys = self._raw.get("api_keys", {})  # api_key -> {requests_per_minute, monthly_token_budget}
 
     @property
     def logging_config(self) -> dict:

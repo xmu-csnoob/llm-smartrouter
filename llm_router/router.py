@@ -28,40 +28,6 @@ class Router:
             return self._route_with_scoring(request_body)
         return self._route_by_legacy_rules(request_body)
 
-    def check_tier_permission(
-        self, client_api_key: str | None, requested_tier: str,
-    ) -> tuple[bool, str | None]:
-        """Check if the client's API key allows the requested tier.
-
-        Returns (allowed, exclusion_reason).
-        """
-        if not client_api_key:
-            return True, None
-
-        key_config = self.config.api_keys.get(client_api_key)
-        if not key_config:
-            return True, None  # No restrictions for unknown keys
-
-        allowed_tiers = key_config.get("allowed_tiers")
-        if allowed_tiers is None:
-            return True, None
-
-        if requested_tier in allowed_tiers:
-            return True, None
-
-        # Find the highest allowed tier
-        tier_order = self.config.tier_order
-        highest_allowed = None
-        for tier in tier_order:
-            if tier in allowed_tiers:
-                highest_allowed = tier
-                break
-
-        return False, (
-            f"tier '{requested_tier}' not allowed for this API key. "
-            f"Highest allowed: {highest_allowed or 'none'}"
-        )
-
     def replay_log_entry(self, entry: dict[str, Any]) -> dict[str, Any] | None:
         """Replay scoring on a logged feature snapshot using current weights."""
         feature_values = entry.get("feature_values")

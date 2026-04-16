@@ -173,24 +173,6 @@ class StreamProxy:
         log_entry["semantic_features"] = semantic_features_out
         log_entry["router_context"] = router_context
 
-        # --- Tier permission check ---
-        selected_tier = route_info.get("selected_tier", tier)
-        tier_allowed, exclusion_reason = self.router.check_tier_permission(client_api_key, selected_tier)
-        if not tier_allowed:
-            logger.warning(f"Tier restriction triggered for client API key: {exclusion_reason}")
-            log_entry["observability_only"] = True
-            # Re-route to highest allowed tier
-            tier_order = self.config.tier_order
-            for allowed_tier in tier_order:
-                allowed, _ = self.router.check_tier_permission(client_api_key, allowed_tier)
-                if allowed:
-                    logger.info(f"Re-routing to allowed tier: {allowed_tier}")
-                    model_id, provider_cfg, route_info = self.router._select_model(allowed_tier, route_info)
-                    tier = allowed
-                    log_entry["selected_tier"] = allowed_tier
-                    log_entry["routed_tier"] = allowed_tier
-                    break
-
         # --- Shadow policy decision ---
         if self.shadow_policy is not None:
             from .schemas import FeatureSnapshot
