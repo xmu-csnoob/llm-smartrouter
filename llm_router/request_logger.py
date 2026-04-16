@@ -197,6 +197,10 @@ class RequestLogger:
                 "feature_snapshot_count": 0,
                 "selected_tier_count": 0,
                 "observability_only_count": 0,
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_cost": 0.0,
+                "tier_tokens": {},
             }
 
         total = len(entries)
@@ -289,6 +293,39 @@ class RequestLogger:
             if scores
         }
 
+        # Aggregate token usage and cost
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_cost = 0.0
+        for e in entries:
+            inp = e.get("input_tokens")
+            out = e.get("output_tokens")
+            cst = e.get("cost")
+            if inp is not None:
+                total_input_tokens += inp
+            if out is not None:
+                total_output_tokens += out
+            if cst is not None:
+                total_cost += cst
+
+        # Per-tier token/cost aggregates
+        tier_tokens: dict[str, dict] = {}
+        for e in entries:
+            tier = e.get("routed_tier")
+            if not tier:
+                continue
+            if tier not in tier_tokens:
+                tier_tokens[tier] = {"input_tokens": 0, "output_tokens": 0, "cost": 0.0}
+            inp = e.get("input_tokens")
+            out = e.get("output_tokens")
+            cst = e.get("cost")
+            if inp is not None:
+                tier_tokens[tier]["input_tokens"] += inp
+            if out is not None:
+                tier_tokens[tier]["output_tokens"] += out
+            if cst is not None:
+                tier_tokens[tier]["cost"] += cst
+
         return {
             "total": total,
             "errors": errors,
@@ -312,6 +349,10 @@ class RequestLogger:
             "feature_snapshot_count": feature_snapshot_count,
             "selected_tier_count": selected_tier_count,
             "observability_only_count": observability_only_count,
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
+            "total_cost": round(total_cost, 6),
+            "tier_tokens": tier_tokens,
         }
 
     async def stream_export_entries(

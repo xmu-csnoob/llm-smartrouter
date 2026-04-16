@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { StatsCards } from './components/StatsCards'
+import { TokenCostCard } from './components/TokenCostCard'
 import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
@@ -318,6 +319,7 @@ function App() {
                 <>
                   {/* Stats Row */}
                   <StatsCards stats={stats} onRefresh={refreshAll} />
+                  <TokenCostCard stats={stats} />
 
                   {nav === 'overview' ? (
                     /* ── Overview: 3-column middle grid ── */

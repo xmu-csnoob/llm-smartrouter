@@ -43,7 +43,8 @@
     "featureSnapshot": "Feature Snapshot",
     "intentDistribution": "Intent Distribution",
     "shadowPolicy": "Shadow Policy",
-    "taskTypes": "{count} task types"
+    "taskTypes": "{count} task types",
+    "tokenCost": "Token & Cost"
   },
   "table": {
     "noRequests": "No requests logged yet",

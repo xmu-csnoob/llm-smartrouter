@@ -115,6 +115,11 @@ export interface Stats {
   missing_selected_tier_count: number;
   task_types: Record<string, number>;
   schema_versions: Record<string, number>;
+  // Token & cost aggregates
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cost: number;
+  tier_tokens: Record<string, { input_tokens: number; output_tokens: number; cost: number }>;
 }
 
 export async function fetchRecent(offset = 0, limit = 50, model?: string | null, key?: string | null): Promise<RecentResponse> {

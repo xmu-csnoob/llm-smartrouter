@@ -43,7 +43,8 @@
     "featureSnapshot": "特征快照",
     "intentDistribution": "意图分布",
     "shadowPolicy": "影子策略",
-    "taskTypes": "{count} 种任务类型"
+    "taskTypes": "{count} 种任务类型",
+    "tokenCost": "Tokens 与费用"
   },
   "table": {
     "noRequests": "暂无请求记录",

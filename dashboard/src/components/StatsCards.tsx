@@ -46,7 +46,7 @@ export function StatsCards({ stats, onRefresh }: Props) {
   }
 
   return (
-    <div className="stat-row" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+    <div className="stat-row" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
       {/* Total Requests */}
       <div className="stat-block">
         <div className="stat-block-accent" />
