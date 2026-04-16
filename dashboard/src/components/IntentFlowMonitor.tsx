@@ -18,7 +18,7 @@ const INTENT_META: Record<Intent, { color: string; abbr: string }> = {
   explain:      { color: 'hsl(185 80% 55%)', abbr: 'EXP' },
   generation:    { color: 'hsl(30 85% 60%)',  abbr: 'GEN' },
   reasoning:    { color: 'hsl(330 65% 60%)', abbr: 'RSN' },
-  general:      { color: 'hsl(225 45% 45%)', abbr: 'GEN2' },
+  general:      { color: 'hsl(225 45% 45%)', abbr: 'RL' },
 }
 
 function parseTimestamp(ts: string | null | undefined): number | null {
