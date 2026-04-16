@@ -10,6 +10,7 @@ import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
 import { GSPanel } from './components/GSPanel'
+import { CommandPalette } from './components/CommandPalette'
 
 function Clock() {
   const [time, setTime] = useState(new Date())
@@ -35,6 +36,7 @@ function App() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // ESC to exit fullscreen
   useEffect(() => {
@@ -43,6 +45,18 @@ function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [fullscreenPanel])
+
+  // Cmd+K to open command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
@@ -149,6 +163,16 @@ function App() {
 
   return (
     <div className="app-shell">
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          models={stats?.models ?? {}}
+          onNav={(nav) => { setNav(nav as NavView); handleBack() }}
+          onLocaleToggle={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+          onArchive={handleArchive}
+          locale={locale}
+        />
+      )}
       {/* ── Sidebar ── */}
       <aside className="app-sidebar">
         <div className="sidebar-brand">
@@ -307,6 +331,14 @@ function App() {
             <GSPanel panelId="analysis-full" title={t('analysis.title')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
               <AnalysisPanel />
             </GSPanel>
+            <div className="analysis-grid">
+              <GSPanel panelId="intent-diff" title={t('chart.intentDifficulty')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <SemanticDistributionChart stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="shadow-policy" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <ShadowPolicyPanel stats={stats} />
+              </GSPanel>
+            </div>
           </div>
         ) : (
           /* ── Overview / Logs View ── */
@@ -336,7 +368,7 @@ function App() {
               <StatsCards stats={stats} onRefresh={refreshAll} />
 
               {nav === 'overview' ? (
-                /* ── Overview: 4-panel grid ── */
+                /* ── Overview: 2-column clean grid ── */
                 <div className="middle-grid">
                   <GSPanel panelId="model" title={t('chart.modelDistribution')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} className="distribution-panel">
                     <ModelChart stats={stats} onSliceClick={handleModelSelect} />
@@ -346,14 +378,6 @@ function App() {
                     <div className="latency-chart-container">
                       <LatencyChart entries={allEntries} />
                     </div>
-                  </GSPanel>
-
-                  <GSPanel panelId="intent-diff" title={t('chart.intentDifficulty')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                    <SemanticDistributionChart stats={stats} />
-                  </GSPanel>
-
-                  <GSPanel panelId="shadow-policy" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                    <ShadowPolicyPanel stats={stats} />
                   </GSPanel>
                 </div>
               ) : null}
