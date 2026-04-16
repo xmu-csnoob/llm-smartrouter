@@ -49,6 +49,7 @@ import { TokenSaturationPanel } from './components/TokenSaturationPanel'
 import { TierEfficiencyMatrix } from './components/TierEfficiencyMatrix'
 import { CostPerOutcomePanel } from './components/CostPerOutcomePanel'
 import { StreamingIncidentDetector } from './components/StreamingIncidentDetector'
+import { OutputTruncationRiskAdvisor } from './components/OutputTruncationRiskAdvisor'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -409,6 +410,7 @@ function App() {
               <TierEfficiencyMatrix entries={allEntries} />
               <CostPerOutcomePanel entries={allEntries} />
               <StreamingIncidentDetector entries={allEntries} />
+              <OutputTruncationRiskAdvisor entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
