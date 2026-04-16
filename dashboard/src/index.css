@@ -621,21 +621,16 @@
   }
 }
 
-/* ── Analysis page grid: Intent/Difficulty + ShadowPolicy + TierTraffic ── */
+/* ── Analysis page grid: Intent/Difficulty + ShadowPolicy + TierTraffic + Health ── */
 .analysis-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 1rem;
   align-items: start;
 }
 
-@media (max-width: 1100px) {
-  .analysis-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .analysis-grid {
     grid-template-columns: 1fr;
   }
@@ -1200,6 +1195,7 @@
 .analysis-grid .gs-panel:nth-child(1) { animation-delay: 80ms; }
 .analysis-grid .gs-panel:nth-child(2) { animation-delay: 160ms; }
 .analysis-grid .gs-panel:nth-child(3) { animation-delay: 240ms; }
+.analysis-grid .gs-panel:nth-child(4) { animation-delay: 320ms; }
 
 /* ═══════════════════════════════════════
    MISC UTILITIES

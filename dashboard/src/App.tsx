@@ -6,6 +6,7 @@ import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
 import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { TierTrafficFlow } from './components/TierTrafficFlow'
+import { RoutingHealthBoard } from './components/RoutingHealthBoard'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -341,6 +342,9 @@ function App() {
               </GSPanel>
               <GSPanel panelId="shadow-policy" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <ShadowPolicyPanel stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="health-board" title="Routing Health" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <RoutingHealthBoard stats={stats} />
               </GSPanel>
             </div>
           </div>
