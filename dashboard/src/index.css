@@ -103,6 +103,7 @@
     /* ── Custom design tokens ── */
     --glow-primary:      0 0 12px hsl(185 80% 50% / 0.35);
     --glow-primary-sm:   0 0 6px hsl(185 80% 50% / 0.25);
+    --glow-primary-hover: 0 0 20px hsl(185 80% 50% / 0.5);
     --glow-orange:       0 0 10px hsl(25 95% 55% / 0.4);
     --panel-border:      1px solid var(--border);
     --panel-glow:        0 0 0 1px hsl(185 80% 50% / 0.08), 0 4px 24px hsl(0 0% 0% / 0.4);
@@ -169,6 +170,27 @@
   padding: 1.25rem 1rem;
   border-bottom: var(--panel-border);
   position: relative;
+  overflow: hidden;
+}
+
+/* Subtle radial glow behind the brand logo */
+.sidebar-brand::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 60px;
+  background: radial-gradient(ellipse, hsl(185 80% 50% / 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: brand-pulse 3s ease-in-out infinite;
+}
+
+@keyframes brand-pulse {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
 }
 
 .sidebar-brand::after {
@@ -335,6 +357,7 @@
 
 .stat-block:hover {
   background: hsl(185 80% 50% / 0.04);
+  box-shadow: inset 0 0 20px hsl(185 80% 50% / 0.04);
 }
 
 .stat-block-label {
@@ -373,6 +396,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--foreground);
   position: relative;
+  text-shadow: 0 0 20px hsl(185 80% 50% / 0.15);
 }
 
 .stat-block-sub {
@@ -398,6 +422,13 @@
   position: relative;
   backdrop-filter: blur(8px);
   cursor: zoom-in;
+  transition: box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
+}
+
+.gs-panel:hover {
+  box-shadow: 0 0 0 1px hsl(185 80% 50% / 0.15), 0 8px 32px hsl(0 0% 0% / 0.5), 0 0 20px hsl(185 80% 50% / 0.08);
+  transform: translateY(-1px);
+  border-color: hsl(185 80% 50% / 0.2);
 }
 
 .gs-panel::before {
@@ -469,6 +500,16 @@
 }
 
 /* ── Fullscreen overlay ── */
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes panel-expand {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .gs-panel-overlay {
   position: fixed;
   inset: 0;
@@ -478,7 +519,7 @@
   justify-content: center;
   background: hsl(225 45% 6% / 0.85);
   backdrop-filter: blur(12px);
-  animation: fade-in 150ms ease-out;
+  animation: overlay-in 200ms ease-out;
 }
 .gs-panel--fullscreen {
   position: relative;
@@ -491,6 +532,7 @@
   box-shadow: 0 0 0 1px hsl(185 80% 50% / 0.15), 0 8px 48px hsl(0 0% 0% / 0.6), 0 0 80px hsl(185 80% 50% / 0.05);
   cursor: default;
   border-radius: 12px;
+  animation: panel-expand 250ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 .gs-panel--fullscreen .gs-panel-body {
   flex: 1;
@@ -634,6 +676,30 @@
   .analysis-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ═══════════════════════════════════════
+   AMBIENT SHIMMER — subtle sweep on panels
+═══════════════════════════════════════ */
+@keyframes panel-shimmer {
+  0%   { left: -60%; opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.gs-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(185 80% 50% / 0.04), transparent);
+  pointer-events: none;
+  z-index: 1;
+  animation: panel-shimmer 4s ease-in-out infinite;
+  animation-delay: 2s;
 }
 
 /* ═══════════════════════════════════════
@@ -883,6 +949,7 @@
 .table-row-clickable:hover td {
   background: hsl(185 80% 50% / 0.06) !important;
   cursor: pointer;
+  box-shadow: inset 0 0 20px hsl(185 80% 50% / 0.04);
 }
 
 .data-table .cell-mono {
@@ -1078,6 +1145,7 @@
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.02em;
+  text-shadow: 0 0 12px hsl(185 80% 50% / 0.4);
 }
 
 .model-stats-row {
