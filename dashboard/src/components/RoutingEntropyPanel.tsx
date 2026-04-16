@@ -24,9 +24,10 @@ function shannonEntropy(counts: Record<string, number>): number {
 
 type EntropyClass = 'HIGH' | 'MODERATE' | 'LOW'
 
+// MAX_H = log2(3) ≈ 1.585 for 3 equal tiers; thresholds normalized to [0, MAX_H]
 function entropyClass(h: number): EntropyClass {
-  if (h > 2.0) return 'HIGH'
-  if (h >= 1.0) return 'MODERATE'
+  if (h > 1.3) return 'HIGH'
+  if (h >= 0.7) return 'MODERATE'
   return 'LOW'
 }
 
@@ -48,7 +49,6 @@ interface EntropyStats {
   prevH: number
   deltaH: number
   entropyClass: EntropyClass
-  dominantTier: string
   tierProbs: Record<string, number>
   tierCounts: Record<string, number>
   total: number
@@ -100,9 +100,6 @@ export function RoutingEntropyPanel({ entries }: { entries: LogEntry[] }) {
     const prevH = shannonEntropy(prevTierCounts)
     const deltaH = currentH - prevH
 
-    const dominantTier = Object.entries(tierCounts)
-      .sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown'
-
     // matched_by breakdown
     const methodBreakdown: Record<string, number> = {}
     for (const e of logEntries) {
@@ -119,7 +116,6 @@ export function RoutingEntropyPanel({ entries }: { entries: LogEntry[] }) {
       prevH,
       deltaH,
       entropyClass: entropyClass(currentH),
-      dominantTier,
       tierProbs,
       tierCounts,
       total,
@@ -207,27 +203,27 @@ export function RoutingEntropyPanel({ entries }: { entries: LogEntry[] }) {
               strokeLinecap="round"
             />
             {/* Colored segments */}
-            {/* LOW zone: 0-1.0 */}
+            {/* LOW zone: 0-0.7 */}
             <path
-              d={arcPath(GAUGE_R, Math.min(1.0 / MAX_H, 1))}
+              d={arcPath(GAUGE_R, Math.min(0.7 / MAX_H, 1))}
               fill="none"
               stroke="hsl(145 65% 55%)"
               strokeWidth={4}
               strokeLinecap="round"
               opacity={0.7}
             />
-            {/* MODERATE zone: 1.0-2.0 */}
+            {/* MODERATE zone: 0.7-1.3 */}
             <path
-              d={arcPath(GAUGE_R, Math.min(2.0 / MAX_H, 1))}
+              d={arcPath(GAUGE_R, Math.min(1.3 / MAX_H, 1))}
               fill="none"
               stroke="hsl(38 92% 55%)"
               strokeWidth={4}
               strokeLinecap="round"
               opacity={0.5}
             />
-            {/* HIGH zone: 2.0+ */}
+            {/* HIGH zone: 1.3-MAX_H */}
             <path
-              d={arcPath(GAUGE_R, Math.min(2.0 / MAX_H, 1))}
+              d={arcPath(GAUGE_R, 1)}
               fill="none"
               stroke="hsl(0 72% 55%)"
               strokeWidth={4}
