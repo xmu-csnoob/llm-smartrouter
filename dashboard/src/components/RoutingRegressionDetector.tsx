@@ -134,9 +134,7 @@ export function RoutingRegressionDetector({ entries }: { entries: LogEntry[] }) 
   }, [entries])
 
   const {
-    tierDist, methodDist,
-    priorTierPct, currentTierPct,
-    priorMethodPct, currentMethodPct,
+    currentTierPct,
     tier1Delta, tier2Delta, tier3Delta,
     mlDelta, ruleDelta,
     tier1Spark, tier2Spark, tier3Spark,
@@ -265,9 +263,7 @@ export function RoutingRegressionDetector({ entries }: { entries: LogEntry[] }) 
     } else recommendation = 'Routing distribution stable'
 
     return {
-      tierDist: td, methodDist: md,
-      priorTierPct: prTierPct, currentTierPct: curTierPct,
-      priorMethodPct: prMethodPct, currentMethodPct: curMethodPct,
+      currentTierPct: curTierPct,
       tier1Delta: dTier1, tier2Delta: dTier2, tier3Delta: dTier3,
       mlDelta: dMl, ruleDelta: dRule,
       tier1Spark: tier1S, tier2Spark: tier2S, tier3Spark: tier3S,

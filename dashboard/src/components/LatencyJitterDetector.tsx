@@ -74,25 +74,6 @@ interface TierJitter {
   sampleCount: number
 }
 
-function Sparkline({ values, color, width = 80, height = 18 }: { values: number[]; color: string; width?: number; height?: number }) {
-  const finite = values.filter(Number.isFinite)
-  if (finite.length < 2) return <svg width={width} height={height} aria-label="Insufficient data" />
-  const min = Math.min(...finite)
-  const max = Math.max(...finite)
-  const range = max - min || 1
-  const xScale = Math.max(width - 1, 1)
-  const yScale = Math.max(height - 2, 1)
-  const pts = finite.map((v, i) => {
-    const x = finite.length === 1 ? 0 : (i / (finite.length - 1)) * xScale
-    const y = 1 + (yScale - ((v - min) / range) * yScale)
-    return `${x},${y}`
-  }).join(' ')
-  return (
-    <svg width={width} height={height} style={{ overflow: 'visible' }} aria-label={`CV sparkline, ${finite.length} points`}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
 
 type IncidentState = 'NOMINAL' | 'DEGRADED' | 'CRITICAL'
 
