@@ -105,6 +105,18 @@ React 19 + Vite 8 + TailwindCSS 4 + shadcn/ui + Recharts. Components: StatsCards
 
 `config.yaml` defines providers (with `api_format: anthropic|openai`), model pool by tier, fallback thresholds, logging settings, ML routing options, redaction settings, and shadow policy. Config supports env-var interpolation (`${VAR_NAME}`).
 
+## What NOT to Build
+
+- **Self-imposed rate limiting** on outbound API calls. All keys are code-plan (按量付费), so榨干上游算力才是收益最大化。限速只会浪费对端配额，对自己没好处。只在需要保护下游不被自己跑爆配额时才考虑（如多客户共用key）。
+- **Per-API-key tier restrictions** (`allowed_tiers`). Not meaningful for code-plan — every key pays for what it uses, no tier-based access control needed.
+- **Cost-aware routing** that prefers cheaper models within a tier. For code-plan, routing should optimize for speed/quality first, not cost — the client pays for whatever tier they hit.
+
+## Design Principles (Code-Plan场景)
+
+- **API key tracking**: Extract and store API key in log entries for association/auditing only — not for access control.
+- **Cost visibility**: Expose actual token usage via response headers (`X-Token-Count-Input`, `X-Token-Count-Output`, `X-Estimated-Cost`) and SSE `event: token_count` — so clients can see their consumption.
+- **Log everything**: All requests logged with schema v3 including `client_api_key`, `input_tokens`, `output_tokens`, `cost`.
+
 ## Testing
 
 Benchmark cases in `tests/routing_benchmark_cases.py` — 200 labeled cases across 4 rounds: simple (tier3), workhorse (tier2), frontier (tier1), and boundary edge cases. Evaluated via `scripts/eval_routing_benchmark.py`.
