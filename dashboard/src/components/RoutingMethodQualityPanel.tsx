@@ -116,11 +116,11 @@ export function RoutingMethodQualityPanel({ entries }: { entries: LogEntry[] }) 
     }
 
     // Finalize method stats
-    const methodList: MethodStats[] = []
+    const allMethods: MethodStats[] = []
     for (const m of Object.values(methodMap)) {
       m.errorRate = m.count > 0 ? m.errorCount / m.count : 0
       m.medianLatency = computeMedian(m.latencies)
-      methodList.push(m)
+      allMethods.push(m)
     }
 
     // Finalize rule stats
@@ -132,11 +132,11 @@ export function RoutingMethodQualityPanel({ entries }: { entries: LogEntry[] }) 
     }
 
     // Sort methods by error rate ascending (best first)
-    methodList.sort((a, b) => a.errorRate - b.errorRate)
+    allMethods.sort((a, b) => a.errorRate - b.errorRate)
     topRules.sort((a, b) => b.count - a.count)
 
     return {
-      methods: methodList.slice(0, 6),
+      methods: allMethods.slice(0, 6),
       topRules: topRules.slice(0, 8),
       total,
       windowSize: window.length,
