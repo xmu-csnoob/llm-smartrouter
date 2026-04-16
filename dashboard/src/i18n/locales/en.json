@@ -53,7 +53,14 @@
     "requests": "{value} requests (avg {avgLatency}ms)",
     "requestLabel": "Request {label} — {model}",
     "requestLabelShort": "Request {label}",
-    "intentDifficulty": "Intent & Difficulty"
+    "intentDifficulty": "Intent & Difficulty",
+    "spActive": "SP Active",
+    "forcedDowngrade": "Forced Downgrade",
+    "avgPropensity": "Avg Propensity",
+    "spMode": "SP Mode",
+    "candidateTier": "Candidate Tier",
+    "exclusionReasons": "Exclusion Reasons",
+    "hardExclusionRules": "Hard Exclusion Rules"
   },
   "analysis": {
     "title": "Log Analysis",

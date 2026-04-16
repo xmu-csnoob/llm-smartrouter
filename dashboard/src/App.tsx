@@ -6,6 +6,7 @@ import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
 import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
+import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe } from 'lucide-react'
 
@@ -296,6 +297,16 @@ function App() {
                     </div>
                     <div className="gs-panel-body">
                       <SemanticDistributionChart stats={stats} />
+                    </div>
+                  </div>
+
+                  {/* Shadow Policy Panel */}
+                  <div className="gs-panel">
+                    <div className="gs-panel-header">
+                      <span className="gs-eyebrow">{t('stats.shadowPolicy')}</span>
+                    </div>
+                    <div className="gs-panel-body">
+                      <ShadowPolicyPanel stats={stats} />
                     </div>
                   </div>
                 </div>

@@ -187,6 +187,13 @@ class RequestLogger:
                 "observability_only_count": 0,
                 "intent_distribution": {},
                 "difficulty_distribution": {},
+                "shadow_policy_mode_distribution": {},
+                "shadow_policy_candidate_tier_distribution": {},
+                "shadow_policy_propensity_sum": 0,
+                "shadow_policy_propensity_count": 0,
+                "shadow_policy_forced_lower_tier_count": 0,
+                "shadow_policy_exclusion_reasons": {},
+                "shadow_policy_hard_exclusion_counts": {},
             }
 
         total = len(entries)
@@ -212,6 +219,13 @@ class RequestLogger:
         observability_only_count = 0
         intent_distribution = {}
         difficulty_distribution = {}
+        shadow_policy_mode_distribution = {}
+        shadow_policy_candidate_tier_distribution = {}
+        shadow_policy_propensity_sum = 0.0
+        shadow_policy_propensity_count = 0
+        shadow_policy_forced_lower_tier_count = 0
+        shadow_policy_exclusion_reasons = {}
+        shadow_policy_hard_exclusion_counts = {}
         for e in entries:
             m = e.get("routed_model", "unknown")
             if m not in models:
@@ -277,6 +291,27 @@ class RequestLogger:
             for tier_name, score in (e.get("tier_scores") or {}).items():
                 tier_score_totals.setdefault(tier_name, []).append(score)
 
+            # Shadow policy aggregation
+            sp = e.get("shadow_policy_decision") or {}
+            sp_mode = sp.get("mode", "off")
+            if sp_mode:
+                shadow_policy_mode_distribution[sp_mode] = shadow_policy_mode_distribution.get(sp_mode, 0) + 1
+            if sp_mode != "off":
+                propensity = sp.get("propensity")
+                if propensity is not None:
+                    shadow_policy_propensity_sum += propensity
+                    shadow_policy_propensity_count += 1
+            if sp_mode == "forced_lower_tier":
+                shadow_policy_forced_lower_tier_count += 1
+            candidate_tier = sp.get("candidate_tier")
+            if candidate_tier:
+                shadow_policy_candidate_tier_distribution[candidate_tier] = shadow_policy_candidate_tier_distribution.get(candidate_tier, 0) + 1
+            exclusion_reason = sp.get("exclusion_reason")
+            if exclusion_reason:
+                shadow_policy_exclusion_reasons[exclusion_reason] = shadow_policy_exclusion_reasons.get(exclusion_reason, 0) + 1
+            for hard_excl in sp.get("hard_exclusions_triggered") or []:
+                shadow_policy_hard_exclusion_counts[hard_excl] = shadow_policy_hard_exclusion_counts.get(hard_excl, 0) + 1
+
         for m in models:
             c = models[m]["count"]
             models[m]["avg_latency_ms"] = round(models[m]["total_latency"] / c, 1) if c else 0
@@ -314,6 +349,12 @@ class RequestLogger:
             "observability_only_count": observability_only_count,
             "intent_distribution": intent_distribution,
             "difficulty_distribution": difficulty_distribution,
+            "shadow_policy_mode_distribution": shadow_policy_mode_distribution,
+            "shadow_policy_candidate_tier_distribution": shadow_policy_candidate_tier_distribution,
+            "shadow_policy_avg_propensity": round(shadow_policy_propensity_sum / shadow_policy_propensity_count, 4) if shadow_policy_propensity_count else None,
+            "shadow_policy_forced_lower_tier_count": shadow_policy_forced_lower_tier_count,
+            "shadow_policy_exclusion_reasons": shadow_policy_exclusion_reasons,
+            "shadow_policy_hard_exclusion_counts": shadow_policy_hard_exclusion_counts,
         }
 
     async def _flush_loop(self):
