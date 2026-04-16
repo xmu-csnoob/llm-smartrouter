@@ -4,10 +4,10 @@ import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
-import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { TierTrafficFlow } from './components/TierTrafficFlow'
 import { RoutingHealthBoard } from './components/RoutingHealthBoard'
 import { RoutingDecisionDrawer } from './components/RoutingDecisionDrawer'
+import { TrafficCompositionRadar } from './components/TrafficCompositionRadar'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -337,8 +337,8 @@ function App() {
               <AnalysisPanel />
             </GSPanel>
             <div className="analysis-grid">
-              <GSPanel panelId="intent-diff" title={t('chart.intentDifficulty')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <SemanticDistributionChart stats={stats} />
+              <GSPanel panelId="intent-radar" title="Traffic Radar" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TrafficCompositionRadar stats={stats} />
               </GSPanel>
               <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierTrafficFlow stats={stats} />
