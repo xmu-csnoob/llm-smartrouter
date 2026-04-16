@@ -28,6 +28,7 @@ import { RecentFallbackFeed } from './components/RecentFallbackFeed'
 import { RoutingMethodDistribution } from './components/RoutingMethodDistribution'
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
+import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -441,6 +442,9 @@ function App() {
                   </GSPanel>
                 </div>
               ) : null}
+
+              {/* Live request stream ticker — only in overview */}
+              {nav === 'overview' && <RequestStreamLiveTicker entries={allEntries} />}
 
               {/* All Requests Table */}
               <div className="gs-panel request-table-panel">
