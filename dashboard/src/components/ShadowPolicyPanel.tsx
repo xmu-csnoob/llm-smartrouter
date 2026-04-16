@@ -132,17 +132,17 @@ export function ShadowPolicyPanel({ stats }: Props) {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <div className="sp-stat">
           <span className="sp-stat-value">{enabledCount}</span>
-          <span className="sp-stat-label">SP Active</span>
+          <span className="sp-stat-label">{t('chart.spActive')}</span>
         </div>
         <div className="sp-stat">
           <span className="sp-stat-value">{forcedCount}</span>
-          <span className="sp-stat-label">Forced Downgrade</span>
+          <span className="sp-stat-label">{t('chart.forcedDowngrade')}</span>
         </div>
         <div className="sp-stat">
           <span className="sp-stat-value">
             {stats.shadow_policy_avg_propensity != null ? stats.shadow_policy_avg_propensity.toFixed(4) : '—'}
           </span>
-          <span className="sp-stat-label">Avg Propensity</span>
+          <span className="sp-stat-label">{t('chart.avgPropensity')}</span>
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export function ShadowPolicyPanel({ stats }: Props) {
         {hasModeData && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '9px', color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-              SP Mode
+              {t('chart.spMode')}
             </div>
             <MiniDonut data={modeData} colors={Object.values(MODE_COLORS)} centerLabel="total" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.25rem' }}>
@@ -169,7 +169,7 @@ export function ShadowPolicyPanel({ stats }: Props) {
         {hasTierData && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '9px', color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
-              Candidate Tier
+              {t('chart.candidateTier')}
             </div>
             <MiniDonut data={tierData} colors={TIER_COLORS} centerLabel="total" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.25rem' }}>
@@ -189,7 +189,7 @@ export function ShadowPolicyPanel({ stats }: Props) {
       {hasExclusionData && (
         <div>
           <div style={{ fontSize: '9px', color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
-            Exclusion Reasons
+            {t('chart.exclusionReasons')}
           </div>
           {exclusionData.length > 0 && (
             <ResponsiveContainer width="100%" height={exclusionData.length * 18 + 20}>
@@ -215,7 +215,7 @@ export function ShadowPolicyPanel({ stats }: Props) {
           {hardExclusionData.length > 0 && (
             <>
               <div style={{ fontSize: '9px', color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem', marginTop: '0.5rem' }}>
-                Hard Exclusion Rules
+                {t('chart.hardExclusionRules')}
               </div>
               <ResponsiveContainer width="100%" height={hardExclusionData.length * 18 + 20}>
                 <BarChart data={hardExclusionData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
