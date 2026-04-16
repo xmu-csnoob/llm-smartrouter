@@ -5,7 +5,8 @@
     "recentRequests": "最近请求",
     "allRequests": "全部请求",
     "overview": "全局概览",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "shadowPolicy": "影子策略"
   },
   "keys": {
     "totalRequests": "总请求数",
@@ -76,5 +77,16 @@
     "analyzingLogs": "正在分析日志...",
     "placeholder": "选择时间范围，点击「开始分析」查看 AI 分析结果",
     "failed": "分析失败"
+  },
+  "shadow": {
+    "title": "影子策略",
+    "window": "{hours}h 窗口",
+    "shadowRequests": "影子请求",
+    "forcedExecutions": "强制降级执行",
+    "exclusions": "排除数",
+    "latencySavings": "延迟节省",
+    "latencyComparison": "延迟对比",
+    "tierTransitions": "层级跃迁",
+    "recentExclusions": "最近排除事件"
   }
 }

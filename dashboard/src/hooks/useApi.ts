@@ -208,3 +208,32 @@ export async function fetchKeyStats(hours = 24): Promise<KeyStatsResponse> {
   const res = await fetch(`${API_BASE}/logs/keys?hours=${hours}`);
   return res.json();
 }
+
+export interface ShadowPolicyStats {
+  window_hours: number;
+  shadow_enabled: boolean;
+  mode_counts: Record<string, number>;
+  total_requests: number;
+  shadow_requests: number;
+  exclusion_count: number;
+  exclusion_reasons: Record<string, number>;
+  forced_lower_tier_count: number;
+  forced_tier_transitions: Record<string, number>;
+  avg_latency_shadow_ms: number | null;
+  avg_latency_primary_ms: number | null;
+  p50_shadow_ms: number | null;
+  p95_shadow_ms: number | null;
+  p50_primary_ms: number | null;
+  p95_primary_ms: number | null;
+  recent_exclusion_events: Array<{
+    timestamp: string;
+    reason: string;
+    triggered_rules: string[];
+    routed_tier: string;
+  }>;
+}
+
+export async function fetchShadowPolicyStats(hours = 24): Promise<ShadowPolicyStats> {
+  const res = await fetch(`${API_BASE}/shadow-policy/stats?hours=${hours}`);
+  return res.json();
+}

@@ -3,13 +3,14 @@ import { StatsCards } from './components/StatsCards'
 import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
+import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { RequestTable } from './components/RequestTable'
 import { KeyStatsTable } from './components/KeyStatsTable'
 import { fetchRecent, fetchStats, archiveLogs, fetchKeyStats, type LogEntry, type Stats, type KeyStatsResponse } from './hooks/useApi'
 import { useI18n } from './i18n'
-import { LayoutDashboard, Database, Archive, Globe, Key } from 'lucide-react'
+import { LayoutDashboard, Database, Archive, Globe, Key, Shield } from 'lucide-react'
 
-type NavView = 'overview' | 'logs' | 'keys'
+type NavView = 'overview' | 'logs' | 'keys' | 'shadow'
 
 function App() {
   const { t, locale, setLocale } = useI18n()
@@ -173,6 +174,13 @@ function App() {
             {t('app.apiKeys')}
           </button>
           <button
+            className={`sidebar-nav-item ${nav === 'shadow' ? 'active' : ''}`}
+            onClick={() => { setNav('shadow'); handleBack(); }}
+          >
+            <Shield className="nav-icon" size={16} />
+            {t('app.shadowPolicy')}
+          </button>
+          <button
             className="sidebar-nav-item"
             onClick={handleArchive}
           >
@@ -260,7 +268,7 @@ function App() {
                   </button>
                 )}
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : nav === 'keys' ? t('app.apiKeys') : t('app.title')}
+                  {nav === 'overview' ? t('app.title') : nav === 'logs' ? t('app.allRequests') : nav === 'keys' ? t('app.apiKeys') : nav === 'shadow' ? t('app.shadowPolicy') : t('app.title')}
                 </h1>
               </div>
               <div className="flex items-center gap-2">
@@ -274,7 +282,14 @@ function App() {
             </header>
 
             <div className="app-content">
-              {nav === 'keys' ? (
+              {nav === 'shadow' ? (
+                /* ── Shadow Policy View ── */
+                <div className="gs-panel">
+                  <div className="gs-panel-body">
+                    <ShadowPolicyPanel />
+                  </div>
+                </div>
+              ) : nav === 'keys' ? (
                 /* ── API Keys View ── */
                 <div className="gs-panel">
                   <div className="gs-panel-header">

@@ -5,7 +5,8 @@
     "recentRequests": "Recent Requests",
     "allRequests": "All Requests",
     "overview": "Overview",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "shadowPolicy": "Shadow Policy"
   },
   "keys": {
     "totalRequests": "Total Requests",
@@ -76,5 +77,16 @@
     "analyzingLogs": "Analyzing logs...",
     "placeholder": "Select a time range and click Analyze to get LLM-powered insights",
     "failed": "Analysis failed"
+  },
+  "shadow": {
+    "title": "Shadow Policy",
+    "window": "{hours}h window",
+    "shadowRequests": "Shadow Requests",
+    "forcedExecutions": "Forced Lower-Tier",
+    "exclusions": "Exclusions",
+    "latencySavings": "Latency Savings",
+    "latencyComparison": "Latency Comparison",
+    "tierTransitions": "Tier Transitions",
+    "recentExclusions": "Recent Exclusion Events"
   }
 }
