@@ -29,6 +29,7 @@ import { RoutingMethodDistribution } from './components/RoutingMethodDistributio
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
 import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
+import { RoutingConfidenceTimeline } from './components/RoutingConfidenceTimeline'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -369,6 +370,7 @@ function App() {
               <RoutingErrorHotspotTable entries={allEntries} />
               <HourlyIntentComposition entries={allEntries} />
               <RecentFallbackFeed entries={allEntries} />
+              <RoutingConfidenceTimeline entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
