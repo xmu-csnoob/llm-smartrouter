@@ -46,6 +46,7 @@ import { StreamingThroughputGauge } from './components/StreamingThroughputGauge'
 import { ModelWarmthIndicator } from './components/ModelWarmthIndicator'
 import { RequestComplexityScore } from './components/RequestComplexityScore'
 import { TokenSaturationPanel } from './components/TokenSaturationPanel'
+import { TierEfficiencyMatrix } from './components/TierEfficiencyMatrix'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
 import { useI18n } from './i18n'
@@ -403,6 +404,7 @@ function App() {
               <ModelWarmthIndicator entries={allEntries} />
               <RequestComplexityScore entries={allEntries} />
               <TokenSaturationPanel entries={allEntries} />
+              <TierEfficiencyMatrix entries={allEntries} />
               <RoutingMethodDistribution entries={allEntries} />
               <ModelErrorFingerprint entries={allEntries} />
               <IntentTokenMatrix entries={allEntries} />
