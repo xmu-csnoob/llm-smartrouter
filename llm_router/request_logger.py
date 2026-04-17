@@ -1,6 +1,7 @@
 """Request logger — async queue + background flush to daily JSONL files."""
 
 import asyncio
+import copy
 import json
 import logging
 import shutil
@@ -60,7 +61,7 @@ class RequestLogger:
         """Enqueue a log entry. Non-blocking, microsecond-scale."""
         if not self.enabled or not self._queue:
             return
-        self._queue.put_nowait(entry)
+        self._queue.put_nowait(copy.deepcopy(entry))
 
     def archive_logs(self) -> dict:
         """Move all current log files to the archive directory.

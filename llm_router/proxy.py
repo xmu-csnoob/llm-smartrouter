@@ -16,11 +16,32 @@ from .router import Router
 from .latency import LatencyTracker
 from .request_logger import RequestLogger
 from .scoring import extract_text_from_messages, extract_text_from_system
+from .upstream_errors import classify_upstream_exception, classify_upstream_response
 from . import semantic_features
 
 logger = logging.getLogger("llm_router")
 
 LOG_SCHEMA_VERSION = 3
+
+
+class UpstreamRequestError(Exception):
+    """Internal exception used to carry classified upstream HTTP failures."""
+
+    def __init__(self, status_code: int, detail: str, error_info):
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
+        self.error_info = error_info
+
+
+_RETRYABLE_UPSTREAM_CATEGORIES = {
+    "transient_rate_limit",
+    "quota_exhausted",
+    "server_error",
+    "timeout",
+    "connection_error",
+    "unknown_upstream_error",
+}
 
 
 def _build_schema_v3_fields(
@@ -119,7 +140,10 @@ class StreamProxy:
         """Forward an Anthropic Messages API request."""
         is_stream = request_body.get("stream", False)
         requested_model = request_body.get("model", "auto")
-        model_id, provider_cfg, route_info = self.router.route(request_body)
+        try:
+            model_id, provider_cfg, route_info = self.router.route(request_body)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e)) from e
         api_format = provider_cfg.get("api_format", "anthropic")
         model_info = self.config.model_registry.get(model_id, {})
         tier = model_info.get("tier", "unknown")
@@ -235,15 +259,42 @@ class StreamProxy:
                 return await self._anthropic_stream(url, headers, body, model_id, tier, timeout, start, log_entry)
             else:
                 return await self._anthropic_normal(url, headers, body, model_id, tier, timeout, start, log_entry)
+        except UpstreamRequestError as e:
+            log_entry["latency_ms"] = log_entry.get("latency_ms") or round((time.monotonic() - start) * 1000)
+            log_entry["status"] = e.status_code
+            log_entry["error"] = e.detail
+            log_entry["fallback_reason"] = e.detail
+            log_entry["upstream_error"] = e.error_info.to_log_dict()
+
+            logger.error(
+                "Request to %s failed: status=%s category=%s detail=%s",
+                model_id,
+                e.status_code,
+                e.error_info.category,
+                e.detail[:300],
+            )
+
+            if e.error_info.category not in _RETRYABLE_UPSTREAM_CATEGORIES:
+                self.req_logger.log(log_entry)
+                raise HTTPException(status_code=e.status_code, detail=e.detail)
+
+            fallback = await self._try_fallback_anthropic(body, model_id, is_stream, log_entry)
+            if fallback is not None:
+                return fallback
+
+            self.req_logger.log(log_entry)
+            raise HTTPException(status_code=502, detail=f"All models failed: {e.detail}")
         except Exception as e:
             elapsed_ms = (time.monotonic() - start) * 1000
-            self.tracker.record(model_id, elapsed_ms, success=False)
+            error_info = classify_upstream_exception(e)
+            self.tracker.record(model_id, elapsed_ms, success=False, error_info=error_info)
             logger.error(f"Request to {model_id} failed: {e}")
 
             log_entry["latency_ms"] = round(elapsed_ms)
             log_entry["status"] = 502
             log_entry["error"] = str(e)
             log_entry["fallback_reason"] = str(e)
+            log_entry["upstream_error"] = error_info.to_log_dict()
 
             fallback = await self._try_fallback_anthropic(body, model_id, is_stream, log_entry)
             if fallback is not None:
@@ -269,14 +320,23 @@ class StreamProxy:
                 ) as resp:
                     if resp.status_code != 200:
                         error_body = await resp.aread()
+                        error_text = error_body.decode(errors="replace")
+                        error_info = classify_upstream_response(resp.status_code, resp.headers, error_text)
                         elapsed_ms = (time.monotonic() - start) * 1000
-                        self.tracker.record(model_id, elapsed_ms, success=False)
-                        logger.error(f"Stream error {resp.status_code}: {error_body.decode()[:300]}")
+                        self.tracker.record(model_id, elapsed_ms, success=False, error_info=error_info)
+                        logger.error(
+                            "Stream error %s for %s (%s): %s",
+                            resp.status_code,
+                            model_id,
+                            error_info.category,
+                            error_text[:300],
+                        )
                         log_entry["latency_ms"] = round(elapsed_ms)
                         log_entry["status"] = resp.status_code
-                        log_entry["error"] = error_body.decode()[:500]
+                        log_entry["error"] = error_text[:500]
+                        log_entry["upstream_error"] = error_info.to_log_dict()
                         self.req_logger.log(log_entry)
-                        yield f"event: error\ndata: {error_body.decode()}\n\n"
+                        yield f"event: error\ndata: {error_text}\n\n"
                         return
 
                     async for line in resp.aiter_lines():
@@ -294,10 +354,12 @@ class StreamProxy:
                     logger.debug(f"Stream completed: {model_id} in {elapsed_ms:.0f}ms")
             except Exception as e:
                 elapsed_ms = (time.monotonic() - start) * 1000
-                self.tracker.record(model_id, elapsed_ms, success=False)
+                error_info = classify_upstream_exception(e)
+                self.tracker.record(model_id, elapsed_ms, success=False, error_info=error_info)
                 log_entry["latency_ms"] = round(elapsed_ms)
                 log_entry["status"] = 502
                 log_entry["error"] = str(e)
+                log_entry["upstream_error"] = error_info.to_log_dict()
                 self.req_logger.log(log_entry)
                 logger.error(f"Stream exception for {model_id}: {e}")
                 yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
@@ -324,17 +386,25 @@ class StreamProxy:
             timeout=httpx.Timeout(connect=10, read=timeout, write=10, pool=10),
         )
         elapsed_ms = (time.monotonic() - start) * 1000
-        self.tracker.record(model_id, elapsed_ms, success=resp.status_code == 200)
-
         log_entry["latency_ms"] = round(elapsed_ms)
         log_entry["status"] = resp.status_code
 
         if resp.status_code != 200:
+            error_info = classify_upstream_response(resp.status_code, resp.headers, resp.text)
+            self.tracker.record(model_id, elapsed_ms, success=False, error_info=error_info)
             log_entry["error"] = resp.text[:500]
+            log_entry["upstream_error"] = error_info.to_log_dict()
             self.req_logger.log(log_entry)
-            logger.error(f"Upstream error {resp.status_code}: {resp.text[:300]}")
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            logger.error(
+                "Upstream error %s for %s (%s): %s",
+                resp.status_code,
+                model_id,
+                error_info.category,
+                resp.text[:300],
+            )
+            raise UpstreamRequestError(status_code=resp.status_code, detail=resp.text, error_info=error_info)
 
+        self.tracker.record(model_id, elapsed_ms, success=True)
         logger.debug(f"Request completed: {model_id} in {elapsed_ms:.0f}ms")
         self.req_logger.log(log_entry)
         return JSONResponse(
@@ -349,7 +419,7 @@ class StreamProxy:
         if not tier:
             return None
 
-        self.tracker.mark_unavailable(failed_model)
+        self.tracker.mark_unavailable(failed_model, reason="transient_failure")
 
         # Same-tier fallback (same provider only for now, since format must match)
         if self.config.fallback.get("cross_provider", True):
@@ -415,8 +485,8 @@ class StreamProxy:
                     timeout=httpx.Timeout(connect=10, read=timeout, write=10, pool=10),
                 )
                 elapsed_ms = (time.monotonic() - start) * 1000
-                self.tracker.record(model_id, elapsed_ms, success=resp.status_code == 200)
                 if resp.status_code == 200:
+                    self.tracker.record(model_id, elapsed_ms, success=True)
                     log_entry["routed_model"] = model_id
                     log_entry["routed_tier"] = tier
                     log_entry["routed_provider"] = model_entry["provider"]
@@ -428,7 +498,9 @@ class StreamProxy:
                         headers={"X-Routed-Model": model_id, "X-Routed-Tier": tier},
                     )
                 else:
-                    log_entry["fallback_chain"][-1]["error"] = f"HTTP {resp.status_code}"
+                    error_info = classify_upstream_response(resp.status_code, resp.headers, resp.text)
+                    self.tracker.record(model_id, elapsed_ms, success=False, error_info=error_info)
+                    log_entry["fallback_chain"][-1]["error"] = f"HTTP {resp.status_code} {error_info.category}"
         except Exception as e:
             logger.warning(f"Fallback to {model_id} failed: {e}")
             log_entry["fallback_chain"][-1]["error"] = str(e)
