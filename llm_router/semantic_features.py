@@ -94,12 +94,30 @@ _LOGIC_ERRORS = {
 }
 
 
-def classify_intent(text: str, messages: list[dict]) -> str:
+def classify_intent(text: str, messages: list[dict], signals: dict[str, int] | None = None) -> str:
     """Classify user intent (what the user wants to do).
 
-    Priority: debug > design > implement > review > explain > generate > question > general.
+    Uses signal count maximum when signals are provided (preferred),
+    otherwise falls back to keyword matching for backward compatibility.
+
     Returns one of: debug, design, implement, review, explain, generate, question, general.
     """
+    if signals is not None:
+        # Max signal wins — avoids keyword first-match bias
+        intent_signals = {
+            "debug": signals.get("debug_signal_count", 0),
+            "design": signals.get("design_signal_count", 0),
+            "implement": signals.get("implementation_signal_count", 0),
+            "review": signals.get("review_signal_count", 0),
+            "explain": signals.get("explain_signal_count", 0),
+            "generate": signals.get("generation_signal_count", 0),
+            "question": signals.get("question_signal_count", 0),
+        }
+        best_intent = max(intent_signals, key=lambda k: intent_signals[k])
+        if intent_signals[best_intent] > 0:
+            return best_intent
+
+    # Fallback: keyword matching (preserved for cases where signals aren't available)
     text_lower = text.lower()
 
     if _contains_any(text_lower, _DEBUG_INTENT):
@@ -335,6 +353,7 @@ def extract_keyword_signals(text: str) -> dict[str, int]:
         "review_signal_count": _count(_REVIEW_INTENT),
         "explain_signal_count": _count(_EXPLAIN_INTENT),
         "generation_signal_count": _count(_GENERATION_KEYWORDS),
+        "question_signal_count": _count(_QUESTION_INTENT),
         "reasoning_signal_count": _count(_REASONING_KEYWORDS),
         "constraint_signal_count": _count(_CONSTRAINT_KEYWORDS),
         "comparison_signal_count": _count(_COMPARISON_KEYWORDS),
@@ -358,7 +377,9 @@ def extract_semantic_features(
     Returns:
         Semantic features dict per Schema v3 spec
     """
-    intent = classify_intent(request_text, messages)
+    # Compute keyword signals first, then use for intent classification
+    signals = extract_keyword_signals(request_text)
+    intent = classify_intent(request_text, messages, signals=signals)
     difficulty = classify_difficulty(raw_features, intent=intent)
     domain = classify_domain(request_text)
     tool_pattern = classify_tool_usage(raw_features.get("tool_count", 0))
@@ -371,7 +392,6 @@ def extract_semantic_features(
     turns = estimate_turn_depth(message_count)
     reasoning = detect_requires_reasoning(intent, error_type, cross_file)
     clarify = estimate_clarification_score(raw_features, intent, messages)
-    signals = extract_keyword_signals(request_text)
 
     # is_followup: reuse from raw_features (already computed in proxy.py)
     is_followup = raw_features.get("is_followup", False)

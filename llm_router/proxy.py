@@ -220,6 +220,8 @@ class StreamProxy:
                 tier1_health_score=router_context.get("tier1_health_score"),
                 tier2_health_score=router_context.get("tier2_health_score"),
                 tier3_health_score=router_context.get("tier3_health_score"),
+                intent=feature_values.get("intent", "general"),
+                task_type=feature_values.get("task_type", "general"),
             )
             shadow_decision = self.shadow_policy.decide(request_body, route_info, feature_snapshot)
             log_entry["shadow_policy_decision"] = {

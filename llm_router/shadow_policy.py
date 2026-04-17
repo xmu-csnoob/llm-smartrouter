@@ -135,8 +135,8 @@ class ShadowPolicy:
         if route_info.get("matched_by") == "passthrough":
             triggered.append("explicit_model_request")
 
-        # 9. 架构任务
-        if snapshot.task_type == "architecture":
+        # 9. 架构任务 (intent=design 或 task_type=architecture 都触发)
+        if snapshot.task_type == "architecture" or snapshot.intent == "design":
             triggered.append("architecture_task")
 
         # 10. 调试关键词

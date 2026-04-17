@@ -142,6 +142,10 @@ class FeatureSnapshot(BaseModel):
     tier1_health_score: float | None = None
     tier2_health_score: float | None = None
     tier3_health_score: float | None = None
+    # Intent: max-signal classified (new taxonomy)
+    intent: str = "general"
+    # Task type: legacy taxonomy mapped from intent (for backward compat)
+    task_type: str = "general"
 
 
 class TierSafetyPrediction(BaseModel):

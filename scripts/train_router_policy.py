@@ -6,8 +6,8 @@ Usage:
     python scripts/train_router_policy.py --training-dir ./training_data --output-dir ./models
 
 Reads Schema v3 training JSONL files, trains tier3 and tier2 safety
-classifiers with isotonic regression calibration, and produces a model
-manifest for the MLRouter to load.
+classifiers with isotonic regression calibration, and produces model
+artifacts for BertTinyRouterModel.
 """
 
 import argparse
