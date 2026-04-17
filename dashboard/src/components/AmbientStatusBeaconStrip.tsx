@@ -174,7 +174,7 @@ export function AmbientStatusBeaconStrip({ entries }: { entries: LogEntry[] }) {
       }} />
 
       <span style={{
-        fontFamily: 'var(--font-mono)', fontSize: '4.5px',
+        fontFamily: 'var(--font-mono)', fontSize: '8px',
         color: 'hsl(38 92% 55%)', textTransform: 'uppercase',
         letterSpacing: '0.08em', flexShrink: 0,
       }}>
@@ -193,14 +193,14 @@ export function AmbientStatusBeaconStrip({ entries }: { entries: LogEntry[] }) {
               borderRadius: 3,
             }}>
               <div style={{
-                width: 4, height: 4, borderRadius: '50%',
+                width: 5, height: 5, borderRadius: '50%',
                 background: meta.color,
                 boxShadow: meta.glow,
                 animation: b.level === 'CRITICAL' ? 'beacon-blink 0.8s ease-in-out infinite' : 'beacon-pulse 1.5s ease-in-out infinite',
                 flexShrink: 0,
               }} />
               <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: '4px',
+                fontFamily: 'var(--font-mono)', fontSize: '6px',
                 color: meta.color, textTransform: 'uppercase',
                 letterSpacing: '0.04em', whiteSpace: 'nowrap',
               }}>
