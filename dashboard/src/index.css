@@ -1434,3 +1434,120 @@
   background: hsl(185 80% 50% / 0.2);
   color: var(--foreground);
 }
+
+/* ═══════════════════════════════════════
+   AMBIENT GRID BACKGROUND
+═══════════════════════════════════════ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 50% 50%, hsl(225 45% 6% / 0.4) 0%, transparent 70%),
+    radial-gradient(hsl(185 80% 50% / 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══════════════════════════════════════
+   PANEL MICRO-INTERACTIONS
+═══════════════════════════════════════ */
+.gs-panel {
+  transition: box-shadow 250ms ease, border-color 250ms ease;
+}
+
+.gs-panel:hover {
+  box-shadow: 0 0 20px hsl(185 80% 50% / 0.08), 0 0 40px hsl(185 80% 50% / 0.04);
+}
+
+/* Top-border accent line on hover */
+.gs-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(185 80% 50% / 0.4), transparent);
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.gs-panel:hover::before {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════
+   CRT FLICKER — for crt-panel class
+═══════════════════════════════════════ */
+@keyframes crt-flicker {
+  0%   { opacity: 1; }
+  92%  { opacity: 1; }
+  93%  { opacity: 0.94; }
+  94%  { opacity: 1; }
+  96%  { opacity: 0.97; }
+  97%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+.crt-panel {
+  animation: fade-in-up 400ms ease both, crt-flicker 6s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════
+   STAT BLOCK AMBIENT GLOW
+═══════════════════════════════════════ */
+@keyframes stat-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px hsl(185 80% 50% / 0.15); }
+  50%       { box-shadow: 0 0 14px hsl(185 80% 50% / 0.28); }
+}
+
+.stat-block:hover {
+  animation: stat-glow-pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════
+   POLISHED SCROLLBAR
+═══════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(225 45% 15%);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(185 80% 50% / 0.4);
+}
+
+/* ═══════════════════════════════════════
+   BADGE SHINE EFFECT
+═══════════════════════════════════════ */
+@keyframes badge-shine {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.gs-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.gs-badge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.08), transparent);
+  animation: badge-shine 3s ease-in-out infinite;
+}
