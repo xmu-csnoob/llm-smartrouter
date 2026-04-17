@@ -11,6 +11,8 @@ def make_tracker(**overrides) -> LatencyTracker:
         "error_threshold": 3,
         "cooldown_seconds": 120,
         "cooldown_max_seconds": 600,
+        "quota_exhausted_cooldown_seconds": 3600,
+        "auth_error_cooldown_seconds": 21600,
         "cross_provider": True,
         "cross_tier": True,
         "degradation_order": ["tier1", "tier2", "tier3"],
@@ -173,6 +175,139 @@ class ExponentialBackoffTests(unittest.TestCase):
         # Success clears cooldown immediately
         tracker.record("glm-5.1", 500, success=True)
         self.assertTrue(tracker.is_available("glm-5.1"))
+        self.assertEqual(tracker._backoff_count.get("glm-5.1", 0), 0)
+
+    def test_quota_exhausted_uses_long_cooldown_without_threshold(self):
+        """Quota-style failures should immediately enter a long cooldown."""
+        tracker = make_tracker(quota_exhausted_cooldown_seconds=1800)
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", detail="usage limit reached")
+
+        self.assertFalse(tracker.is_available("glm-5.1"))
+        remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+        self.assertAlmostEqual(remaining, 1800, delta=1)
+        self.assertEqual(tracker.get_unavailability("glm-5.1")["reason"], "quota_exhausted")
+
+    def test_retry_after_overrides_transient_backoff(self):
+        """Provider retry-after should win over exponential backoff."""
+        tracker = make_tracker()
+        tracker.mark_unavailable("glm-5.1", reason="transient_rate_limit", retry_after_seconds=45)
+
+        remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+        self.assertAlmostEqual(remaining, 45, delta=1)
+
+    def test_durable_reason_clears_after_success(self):
+        """A successful probe should clear durable-unavailable metadata."""
+        tracker = make_tracker()
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", detail="usage limit reached")
+
+        tracker.record("glm-5.1", 500, success=True)
+
+        self.assertTrue(tracker.is_available("glm-5.1"))
+        self.assertIsNone(tracker.get_unavailability("glm-5.1"))
+
+    def test_reset_at_epoch_controls_cooldown(self):
+        """Provider reset epochs should be converted into cooldown duration."""
+        tracker = make_tracker()
+        future_epoch = time.time() + 90
+
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", reset_at_epoch=future_epoch)
+
+        remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+        self.assertAlmostEqual(remaining, 90, delta=2)
+
+    def test_transient_mark_does_not_override_active_durable_lockout(self):
+        """Transient re-marks should not shorten an active durable cooldown."""
+        tracker = make_tracker(quota_exhausted_cooldown_seconds=1800)
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", detail="usage limit reached")
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertGreater(second_remaining, 1700)
+        self.assertAlmostEqual(second_remaining, first_remaining, delta=2)
+        self.assertEqual(tracker.get_unavailability("glm-5.1")["reason"], "quota_exhausted")
+
+    def test_transient_mark_applies_short_cooldown_for_generic_failure(self):
+        """A generic single failure should still trigger immediate short cooldown."""
+        tracker = make_tracker()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+
+        self.assertFalse(tracker.is_available("glm-5.1"))
+        remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+        self.assertAlmostEqual(remaining, 120, delta=1)
+
+    def test_transient_failure_does_not_override_retry_after_window(self):
+        """Fallback re-marks should not overwrite a provider-supplied retry window."""
+        tracker = make_tracker()
+        tracker.mark_unavailable("glm-5.1", reason="transient_rate_limit", retry_after_seconds=30)
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertAlmostEqual(first_remaining, 30, delta=1)
+        self.assertAlmostEqual(second_remaining, 30, delta=1)
+        self.assertEqual(tracker.get_unavailability("glm-5.1")["reason"], "transient_rate_limit")
+
+    def test_durable_lockout_is_not_shortened_by_transient_rate_limit(self):
+        """A later transient rate limit should not shorten an active durable lockout."""
+        tracker = make_tracker(quota_exhausted_cooldown_seconds=1800)
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", detail="usage limit reached")
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_rate_limit", retry_after_seconds=30)
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertGreater(second_remaining, 1700)
+        self.assertAlmostEqual(second_remaining, first_remaining, delta=2)
+        self.assertEqual(tracker.get_unavailability("glm-5.1")["reason"], "quota_exhausted")
+
+    def test_same_priority_durable_mark_does_not_shorten_existing_window(self):
+        """A same-priority durable reason should not shorten a longer existing cooldown."""
+        tracker = make_tracker(quota_exhausted_cooldown_seconds=1800)
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted")
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted", retry_after_seconds=30)
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertGreater(second_remaining, 1700)
+        self.assertAlmostEqual(second_remaining, first_remaining, delta=2)
+
+    def test_same_priority_retry_window_is_preserved_for_server_error(self):
+        """A fallback transient mark should not overwrite retry-after on retryable 5xx errors."""
+        tracker = make_tracker()
+        tracker.mark_unavailable("glm-5.1", reason="server_error", retry_after_seconds=25)
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertAlmostEqual(first_remaining, 25, delta=1)
+        self.assertAlmostEqual(second_remaining, 25, delta=1)
+        self.assertEqual(tracker.get_unavailability("glm-5.1")["reason"], "server_error")
+
+    def test_higher_priority_shorter_window_does_not_shorten_existing_cooldown(self):
+        """A later stronger signal with shorter retry-after should not reduce current lockout."""
+        tracker = make_tracker()
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+        first_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_rate_limit", retry_after_seconds=30)
+        second_remaining = tracker._cooldown_until["glm-5.1"] - time.monotonic()
+
+        self.assertGreater(first_remaining, 100)
+        self.assertAlmostEqual(second_remaining, first_remaining, delta=2)
+
+    def test_preserved_transient_mark_does_not_advance_backoff_counter(self):
+        """Ignored transient re-marks should not poison future exponential backoff."""
+        tracker = make_tracker(quota_exhausted_cooldown_seconds=1800)
+        tracker.mark_unavailable("glm-5.1", reason="quota_exhausted")
+
+        tracker.mark_unavailable("glm-5.1", reason="transient_failure")
+
         self.assertEqual(tracker._backoff_count.get("glm-5.1", 0), 0)
 
 

@@ -118,6 +118,16 @@ class RouterScoringTests(unittest.TestCase):
         self.assertEqual(snapshot["avg_ttft_display"], "N/A (no streaming samples)")
         self.assertNotIn("unknown", snapshot["selected_tier_summary"])
 
+    def test_route_raises_when_all_models_in_selected_tier_are_unavailable(self):
+        router, tracker = make_router()
+        tracker.mark_unavailable("tier3-model", reason="quota_exhausted")
+
+        with self.assertRaises(RuntimeError):
+            router.route({
+                "model": "auto",
+                "messages": [{"role": "user", "content": "hello"}],
+            })
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -238,21 +238,9 @@ class Router:
                 logger.info("Tier degradation: %s -> %s using %s", tier, candidate_tier, best["id"])
             return best["id"], provider_cfg, route_info
 
-        models = self.config.models.get(tier, [])
-        if models:
-            fallback_model = models[0]
-            route_info = {
-                **route_info,
-                "degraded_to_tier": None,
-                "model_selection": {
-                    "strategy": "forced-config-order",
-                    "selected_model": fallback_model["id"],
-                    "selected_model_score": None,
-                    "candidate_tier": tier,
-                    "candidates": [],
-                },
-            }
-            return fallback_model["id"], self.config.get_provider(fallback_model["provider"]), route_info
+        configured_models = sum(len(self.config.models.get(candidate_tier, [])) for candidate_tier in tiers_to_try)
+        if configured_models:
+            raise RuntimeError(f"No available models in tiers: {', '.join(tiers_to_try)}")
 
         raise RuntimeError(f"No models configured for tier {tier}")
 
