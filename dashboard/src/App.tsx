@@ -7,6 +7,7 @@ import { RequestTable } from './components/RequestTable'
 import { SemanticDistributionChart } from './components/SemanticDistributionChart'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
+import { SemanticSignalBarStrip } from './components/SemanticSignalBarStrip'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
 
@@ -371,6 +372,9 @@ function App() {
                       <ShadowPolicyPanel stats={stats} />
                     </div>
                   </div>
+
+                  {/* Semantic Signal Profile */}
+                  <SemanticSignalBarStrip entries={allEntries} />
                 </div>
               ) : null}
 
