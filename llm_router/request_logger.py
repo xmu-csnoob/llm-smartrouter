@@ -160,16 +160,54 @@ class RequestLogger:
         except OSError:
             return
 
+    def _iter_entries_from_file_reversed(self, path: Path, model: str | None = None):
+        """Generator: yield parsed entries from a single file in reverse order (newest first)."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if model and entry.get("routed_model") != model:
+                        continue
+                    yield entry
+                except json.JSONDecodeError:
+                    continue
+        except OSError:
+            return
+
+    def _count_entries_in_file(self, path: Path, model: str | None = None) -> int:
+        """Count all matching entries in a file (for accurate total before pagination)."""
+        count = 0
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        if model and entry.get("routed_model") != model:
+                            continue
+                        count += 1
+                    except json.JSONDecodeError:
+                        continue
+        except OSError:
+            pass
+        return count
+
     def _iter_all_entries_newest_first(self, model: str | None = None):
         """Generator: yield entries from newest file to oldest, newest entry first."""
         archive_dir = self.log_dir / self.archive_dir_name
-        all_files = sorted(self.log_dir.glob("requests-*.jsonl"), reverse=True)
-        for path in all_files:
+        # Sort oldest-first so we encounter newest entries LAST within each file's reversed read
+        all_files = sorted(self.log_dir.glob("requests-*.jsonl"))
+        for path in reversed(all_files):
             if archive_dir in path.parents or path.parent == archive_dir:
                 continue
-            for entry in self._iter_entries_from_file(path):
-                if model and entry.get("routed_model") != model:
-                    continue
+            for entry in self._iter_entries_from_file_reversed(path, model=model):
                 yield entry
 
     def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None) -> dict:
@@ -184,12 +222,21 @@ class RequestLogger:
         if not self.log_dir.exists():
             return {"entries": [], "total": 0, "offset": offset, "limit": limit}
 
-        entries = []
+        # Pass 1: accurate total count
+        archive_dir = self.log_dir / self.archive_dir_name
+        all_files = sorted(self.log_dir.glob("requests-*.jsonl"))
         total = 0
+        for path in all_files:
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
+            total += self._count_entries_in_file(path, model=model)
+
+        # Pass 2: collect page entries (bounded iteration, stops early)
+        entries = []
         skipped = 0
         for entry in self._iter_all_entries_newest_first(model=model):
-            total += 1
             if skipped < offset:
+                skipped += 1
                 continue
             entries.append(entry)
             if len(entries) >= limit:
