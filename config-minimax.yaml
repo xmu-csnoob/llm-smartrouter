@@ -5,6 +5,11 @@ providers:
     api_key: "${MINIMAX_API_KEY}"
     api_format: "anthropic"
     timeout: 120
+  kimi:
+    base_url: "https://api.kimi.com/coding"
+    api_key: "${KIMI_API_KEY}"
+    api_format: "anthropic"
+    timeout: 120
 
 # ===== Model Pool =====
 models:
@@ -17,8 +22,8 @@ models:
       provider: minimax
 
   tier3:  # Routine: conflicts, compile errors, simple tasks
-    - id: "MiniMax-M2.1-highspeed"
-      provider: minimax
+    - id: "kimi-for-coding"
+      provider: kimi
 
 # ===== Routing Rules =====
 rules:
@@ -56,7 +61,7 @@ fallback:
   latency_threshold_ms: 30000
   error_threshold: 3
   cooldown_seconds: 120
-  cross_provider: false
+  cross_provider: true
   cross_tier: true
   degradation_order: [tier1, tier2, tier3]
 
