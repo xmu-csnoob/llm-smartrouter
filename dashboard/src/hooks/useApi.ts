@@ -80,6 +80,7 @@ export interface LogEntry {
   shadow_policy_decision?: ShadowPolicyDecision;
   redacted_preview?: RedactedPreview;
   task_type?: string;
+  tokens_used?: number | { input?: number; output?: number };
 }
 
 export interface RecentResponse {

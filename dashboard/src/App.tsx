@@ -4,11 +4,78 @@ import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
 import { AnalysisPanel } from './components/AnalysisPanel'
 import { RequestTable } from './components/RequestTable'
-import { SemanticDistributionChart } from './components/SemanticDistributionChart'
+import { TierTrafficFlow } from './components/TierTrafficFlow'
+import { RoutingHealthBoard } from './components/RoutingHealthBoard'
+import { RoutingDecisionDrawer } from './components/RoutingDecisionDrawer'
+import { TierConfusionMatrix } from './components/TierConfusionMatrix'
+import { ErrorBurstDetector } from './components/ErrorBurstDetector'
+import { TokenEstimateHistogram } from './components/TokenEstimateHistogram'
+import { TierHealthTimeline } from './components/TierHealthTimeline'
+import { TrafficHeatmap } from './components/TrafficHeatmap'
+import { TierRadar } from './components/TierRadar'
+import { ShadowDiscrepancyFeed } from './components/ShadowDiscrepancyFeed'
+import { IntentDriftTicker } from './components/IntentDriftTicker'
+import { TierCapacityThermometer } from './components/TierCapacityThermometer'
+import { CostAttributionMeter } from './components/CostAttributionMeter'
+import { ModelHealthLeaderboard } from './components/ModelHealthLeaderboard'
+import { IntentLatencyBreakdown } from './components/IntentLatencyBreakdown'
+import { FallbackCascadeDiagram } from './components/FallbackCascadeDiagram'
+import { RoutingAmbiguityIndicator } from './components/RoutingAmbiguityIndicator'
+import { TierRoutingComparison } from './components/TierRoutingComparison'
+import { RoutingErrorHotspotTable } from './components/RoutingErrorHotspotTable'
+import { HourlyIntentComposition } from './components/HourlyIntentComposition'
+import { RecentFallbackFeed } from './components/RecentFallbackFeed'
+import { RoutingMethodDistribution } from './components/RoutingMethodDistribution'
+import { RoutingMethodQualityPanel } from './components/RoutingMethodQualityPanel'
+import { RecursiveDepthMonitor } from './components/RecursiveDepthMonitor'
+import { TierFloorBreachPanel } from './components/TierFloorBreachPanel'
+import { SemanticSignalBarStrip } from './components/SemanticSignalBarStrip'
+import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
+import { IntentTokenMatrix } from './components/IntentTokenMatrix'
+import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
+import { RoutingConfidenceTimeline } from './components/RoutingConfidenceTimeline'
+import { OutcomeHeatmap } from './components/OutcomeHeatmap'
+import { QualityGuardMonitor } from './components/QualityGuardMonitor'
+import { TierSelectionStability } from './components/TierSelectionStability'
+import { ModelRoutingDelta } from './components/ModelRoutingDelta'
+import { StatusCodeDistribution } from './components/StatusCodeDistribution'
+import { TokenConsumptionPanel } from './components/TokenConsumptionPanel'
+import { ConversationLengthPanel } from './components/ConversationLengthPanel'
+import { TierConstraintMonitor } from './components/TierConstraintMonitor'
+import { TierLoadBalancer } from './components/TierLoadBalancer'
+import { ErrorPatternPanel } from './components/ErrorPatternPanel'
+import { ProviderHealthPanel } from './components/ProviderHealthPanel'
+import { TTFTSpikeDetector } from './components/TTFTSpikeDetector'
+import { StreamingThroughputGauge } from './components/StreamingThroughputGauge'
+import { ModelWarmthIndicator } from './components/ModelWarmthIndicator'
+import { RequestComplexityScore } from './components/RequestComplexityScore'
+import { TokenSaturationPanel } from './components/TokenSaturationPanel'
+import { TierEfficiencyMatrix } from './components/TierEfficiencyMatrix'
+import { CostPerOutcomePanel } from './components/CostPerOutcomePanel'
+import { StreamingIncidentDetector } from './components/StreamingIncidentDetector'
+import { OutputTruncationRiskAdvisor } from './components/OutputTruncationRiskAdvisor'
+import { RoutingRegressionDetector } from './components/RoutingRegressionDetector'
+import { LatencyJitterDetector } from './components/LatencyJitterDetector'
+import { TokenEstimateDriftAnalyzer } from './components/TokenEstimateDriftAnalyzer'
+import { ProviderRateLimitTracker } from './components/ProviderRateLimitTracker'
+import { AmbientStatusBeaconStrip } from './components/AmbientStatusBeaconStrip'
+import { AlertCorrelationMatrix } from './components/AlertCorrelationMatrix'
+import { IntentDifficultyCorrelationMatrix } from './components/IntentDifficultyCorrelationMatrix'
+import { MLFeatureAttributionMatrix } from './components/MLFeatureAttributionMatrix'
+import { RoutingRuleLeaderboard } from './components/RoutingRuleLeaderboard'
+import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
+import { ErrorMessageCluster } from './components/ErrorMessageCluster'
+import { IntentFlowMonitor } from './components/IntentFlowMonitor'
+import { LatencySpreadChart } from './components/LatencySpreadChart'
+import { RoutingEntropyPanel } from './components/RoutingEntropyPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
+import { FallbackChainExplorer } from './components/FallbackChainExplorer'
+import { DifficultyHeatmapPanel } from './components/DifficultyHeatmapPanel'
 import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
+import { GSPanel } from './components/GSPanel'
+import { CommandPalette } from './components/CommandPalette'
 
 function Clock() {
   const [time, setTime] = useState(new Date())
@@ -33,6 +100,29 @@ function App() {
   const [nav, setNav] = useState<NavView>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null)
+
+  // ESC to exit fullscreen
+  useEffect(() => {
+    if (!fullscreenPanel) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreenPanel(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [fullscreenPanel])
+
+  // Cmd+K to open command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // All logs (for overview & logs tab)
   const [allEntries, setAllEntries] = useState<LogEntry[]>([])
@@ -139,6 +229,16 @@ function App() {
 
   return (
     <div className="app-shell">
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          models={stats?.models ?? {}}
+          onNav={(nav) => { setNav(nav as NavView); handleBack() }}
+          onLocaleToggle={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+          onArchive={handleArchive}
+          locale={locale}
+        />
+      )}
       {/* ── Sidebar ── */}
       <aside className="app-sidebar">
         <div className="sidebar-brand">
@@ -258,6 +358,7 @@ function App() {
                 offset={(currentModelPage - 1) * pageSize}
                 limit={pageSize}
                 onPageChange={handleModelPageChange}
+                onRowClick={setSelectedEntry}
               />
             </div>
           </div>
@@ -276,11 +377,9 @@ function App() {
               </div>
             </header>
             <StatsCards stats={stats} onRefresh={refreshAll} />
-            <div className="gs-panel" style={{ flex: 1 }}>
-              <div className="gs-panel-body">
-                <ShadowPolicyPanel stats={stats} />
-              </div>
-            </div>
+            <GSPanel panelId="sp-full" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
+              <ShadowPolicyPanel stats={stats} />
+            </GSPanel>
           </div>
         ) : nav === 'analysis' ? (
           /* ── Analysis View ── */
@@ -296,10 +395,93 @@ function App() {
                 </button>
               </div>
             </header>
-            <div className="gs-panel" style={{ flex: 1 }}>
-              <div className="gs-panel-body">
-                <AnalysisPanel />
-              </div>
+            <GSPanel panelId="analysis-full" title={t('analysis.title')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
+              <AnalysisPanel />
+            </GSPanel>
+            <AmbientStatusBeaconStrip entries={allEntries} />
+            <div className="analysis-grid">
+              <IntentDriftTicker stats={stats} />
+              <TierCapacityThermometer stats={stats} />
+              <CostAttributionMeter stats={stats} />
+              <ModelHealthLeaderboard stats={stats} />
+              <IntentLatencyBreakdown stats={stats} />
+              <FallbackCascadeDiagram entries={allEntries} />
+              <RoutingAmbiguityIndicator entries={allEntries} />
+              <TierRoutingComparison entries={allEntries} />
+              <RoutingErrorHotspotTable entries={allEntries} />
+              <HourlyIntentComposition entries={allEntries} />
+              <RecentFallbackFeed entries={allEntries} />
+              <RoutingConfidenceTimeline entries={allEntries} />
+              <OutcomeHeatmap entries={allEntries} />
+              <QualityGuardMonitor entries={allEntries} />
+              <TierSelectionStability entries={allEntries} />
+              <ModelRoutingDelta entries={allEntries} />
+              <StatusCodeDistribution entries={allEntries} />
+              <TokenConsumptionPanel entries={allEntries} />
+              <ConversationLengthPanel entries={allEntries} />
+              <TierConstraintMonitor entries={allEntries} />
+              <TierLoadBalancer entries={allEntries} />
+              <ErrorPatternPanel entries={allEntries} />
+              <ProviderHealthPanel entries={allEntries} />
+              <TTFTSpikeDetector entries={allEntries} />
+              <StreamingThroughputGauge entries={allEntries} />
+              <ModelWarmthIndicator entries={allEntries} />
+              <RequestComplexityScore entries={allEntries} />
+              <TokenSaturationPanel entries={allEntries} />
+              <TierEfficiencyMatrix entries={allEntries} />
+              <CostPerOutcomePanel entries={allEntries} />
+              <StreamingIncidentDetector entries={allEntries} />
+              <OutputTruncationRiskAdvisor entries={allEntries} />
+              <RoutingRegressionDetector entries={allEntries} />
+              <LatencyJitterDetector entries={allEntries} />
+              <TokenEstimateDriftAnalyzer entries={allEntries} />
+              <ProviderRateLimitTracker entries={allEntries} />
+              <AlertCorrelationMatrix entries={allEntries} />
+              <IntentDifficultyCorrelationMatrix entries={allEntries} />
+              <MLFeatureAttributionMatrix entries={allEntries} />
+              <RoutingRuleLeaderboard entries={allEntries} />
+              <ErrorMessageCluster entries={allEntries} />
+              <IntentFlowMonitor entries={allEntries} />
+              <RoutingEntropyPanel entries={allEntries} />
+              <FallbackChainExplorer entries={allEntries} />
+              <DifficultyHeatmapPanel entries={allEntries} />
+              <RoutingMethodDistribution entries={allEntries} />
+              <RoutingMethodQualityPanel entries={allEntries} />
+              <RecursiveDepthMonitor entries={allEntries} />
+              <TierFloorBreachPanel entries={allEntries} />
+              <SemanticSignalBarStrip entries={allEntries} />
+              <ModelErrorFingerprint entries={allEntries} />
+              <IntentTokenMatrix entries={allEntries} />
+              <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <ShadowDiscrepancyFeed entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="tier-confusion" title="Tier Confusion Matrix" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierConfusionMatrix entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierTrafficFlow stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="tier-routing-flow" title="Tier Routing Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierRoutingFlowDiagram entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="error-burst" title="Error Monitor" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <ErrorBurstDetector entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="health-board" title="Routing Health" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <RoutingHealthBoard stats={stats} />
+              </GSPanel>
+              <GSPanel panelId="token-histogram" title="Token Distribution" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TokenEstimateHistogram entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="health-timeline" title="Model Health Timeline" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierHealthTimeline entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="traffic-heatmap" title="Traffic Heatmap" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TrafficHeatmap entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="tier-radar" title="Tier Metrics Radar" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierRadar entries={allEntries} />
+              </GSPanel>
             </div>
           </div>
         ) : (
@@ -330,49 +512,23 @@ function App() {
               <StatsCards stats={stats} onRefresh={refreshAll} />
 
               {nav === 'overview' ? (
-                /* ── Overview: 4-panel grid ── */
+                /* ── Overview: 2-column clean grid ── */
                 <div className="middle-grid">
-                  {/* Model Distribution */}
-                  <div className="gs-panel distribution-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.modelDistribution')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <ModelChart stats={stats} onSliceClick={handleModelSelect} />
-                    </div>
-                  </div>
+                  <GSPanel panelId="model" title={t('chart.modelDistribution')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} className="distribution-panel">
+                    <ModelChart stats={stats} onSliceClick={handleModelSelect} />
+                  </GSPanel>
 
-                  {/* Latency Trend */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.latencyTrend')}</span>
-                    </div>
-                    <div className="gs-panel-body latency-chart-container">
+                  <GSPanel panelId="latency" title={t('chart.latencyTrend')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                    <div className="latency-chart-container">
                       <LatencyChart entries={allEntries} />
                     </div>
-                  </div>
-
-                  {/* Intent & Difficulty Distribution */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('chart.intentDifficulty')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <SemanticDistributionChart stats={stats} />
-                    </div>
-                  </div>
-
-                  {/* Shadow Policy Summary */}
-                  <div className="gs-panel">
-                    <div className="gs-panel-header">
-                      <span className="gs-eyebrow">{t('stats.shadowPolicy')}</span>
-                    </div>
-                    <div className="gs-panel-body">
-                      <ShadowPolicyPanel stats={stats} />
-                    </div>
-                  </div>
+                  </GSPanel>
+                  <LatencySpreadChart entries={allEntries} />
                 </div>
               ) : null}
+
+              {/* Live request stream ticker — only in overview */}
+              {nav === 'overview' && <RequestStreamLiveTicker entries={allEntries} />}
 
               {/* All Requests Table */}
               <div className="gs-panel request-table-panel">
@@ -390,12 +546,18 @@ function App() {
                   offset={(currentAllPage - 1) * pageSize}
                   limit={pageSize}
                   onPageChange={handleAllPageChange}
+                  onRowClick={setSelectedEntry}
                 />
               </div>
             </div>
           </>
         )}
       </main>
+
+      <RoutingDecisionDrawer
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+      />
     </div>
   )
 }
