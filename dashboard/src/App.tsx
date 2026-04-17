@@ -32,7 +32,7 @@ import { TierFloorBreachPanel } from './components/TierFloorBreachPanel'
 import { SemanticSignalBarStrip } from './components/SemanticSignalBarStrip'
 import { ModelErrorFingerprint } from './components/ModelErrorFingerprint'
 import { IntentTokenMatrix } from './components/IntentTokenMatrix'
-import { RequestStreamLiveTicker } from './components/RequestStreamLiveTicker'
+import { RecentActivityStrip } from './components/RecentActivityStrip'
 import { RoutingConfidenceTimeline } from './components/RoutingConfidenceTimeline'
 import { OutcomeHeatmap } from './components/OutcomeHeatmap'
 import { QualityGuardMonitor } from './components/QualityGuardMonitor'
@@ -47,7 +47,6 @@ import { ErrorPatternPanel } from './components/ErrorPatternPanel'
 import { ProviderHealthPanel } from './components/ProviderHealthPanel'
 import { TTFTSpikeDetector } from './components/TTFTSpikeDetector'
 import { StreamingThroughputGauge } from './components/StreamingThroughputGauge'
-import { ModelWarmthIndicator } from './components/ModelWarmthIndicator'
 import { RequestComplexityScore } from './components/RequestComplexityScore'
 import { TokenSaturationPanel } from './components/TokenSaturationPanel'
 import { TierEfficiencyMatrix } from './components/TierEfficiencyMatrix'
@@ -66,7 +65,6 @@ import { RoutingRuleLeaderboard } from './components/RoutingRuleLeaderboard'
 import { TierRoutingFlowDiagram } from './components/TierRoutingFlowDiagram'
 import { ErrorMessageCluster } from './components/ErrorMessageCluster'
 import { IntentFlowMonitor } from './components/IntentFlowMonitor'
-import { LatencySpreadChart } from './components/LatencySpreadChart'
 import { RoutingEntropyPanel } from './components/RoutingEntropyPanel'
 import { fetchRecent, fetchStats, archiveLogs, type LogEntry, type Stats } from './hooks/useApi'
 import { ShadowPolicyPanel } from './components/ShadowPolicyPanel'
@@ -76,6 +74,7 @@ import { useI18n } from './i18n'
 import { LayoutDashboard, Database, Archive, Globe, Radio } from 'lucide-react'
 import { GSPanel } from './components/GSPanel'
 import { CommandPalette } from './components/CommandPalette'
+import { SectionGroup } from './components/SectionGroup'
 
 function Clock() {
   const [time, setTime] = useState(new Date())
@@ -398,91 +397,108 @@ function App() {
             <GSPanel panelId="analysis-full" title={t('analysis.title')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
               <AnalysisPanel />
             </GSPanel>
-            <AmbientStatusBeaconStrip entries={allEntries} />
-            <div className="analysis-grid">
-              <IntentDriftTicker stats={stats} />
-              <TierCapacityThermometer stats={stats} />
-              <CostAttributionMeter stats={stats} />
-              <ModelHealthLeaderboard stats={stats} />
-              <IntentLatencyBreakdown stats={stats} />
-              <FallbackCascadeDiagram entries={allEntries} />
-              <RoutingAmbiguityIndicator entries={allEntries} />
-              <TierRoutingComparison entries={allEntries} />
-              <RoutingErrorHotspotTable entries={allEntries} />
-              <HourlyIntentComposition entries={allEntries} />
-              <RecentFallbackFeed entries={allEntries} />
-              <RoutingConfidenceTimeline entries={allEntries} />
-              <OutcomeHeatmap entries={allEntries} />
-              <QualityGuardMonitor entries={allEntries} />
-              <TierSelectionStability entries={allEntries} />
-              <ModelRoutingDelta entries={allEntries} />
-              <StatusCodeDistribution entries={allEntries} />
-              <TokenConsumptionPanel entries={allEntries} />
-              <ConversationLengthPanel entries={allEntries} />
-              <TierConstraintMonitor entries={allEntries} />
-              <TierLoadBalancer entries={allEntries} />
-              <ErrorPatternPanel entries={allEntries} />
-              <ProviderHealthPanel entries={allEntries} />
-              <TTFTSpikeDetector entries={allEntries} />
-              <StreamingThroughputGauge entries={allEntries} />
-              <ModelWarmthIndicator entries={allEntries} />
-              <RequestComplexityScore entries={allEntries} />
-              <TokenSaturationPanel entries={allEntries} />
-              <TierEfficiencyMatrix entries={allEntries} />
-              <CostPerOutcomePanel entries={allEntries} />
-              <StreamingIncidentDetector entries={allEntries} />
-              <OutputTruncationRiskAdvisor entries={allEntries} />
-              <RoutingRegressionDetector entries={allEntries} />
+
+            {/* ── Section 1: ALERTS & ANOMALIES ── */}
+            <SectionGroup title="Alerts & Anomalies" badge="5 panels" defaultExpanded={true}>
+              <GSPanel panelId="routing-regression" title="Routing Regression" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <RoutingRegressionDetector entries={allEntries} />
+              </GSPanel>
+              <GSPanel panelId="alert-correlation" title="Alert Correlation" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <AlertCorrelationMatrix entries={allEntries} />
+              </GSPanel>
+              <ErrorBurstDetector entries={allEntries} />
               <LatencyJitterDetector entries={allEntries} />
               <TokenEstimateDriftAnalyzer entries={allEntries} />
-              <ProviderRateLimitTracker entries={allEntries} />
-              <AlertCorrelationMatrix entries={allEntries} />
-              <IntentDifficultyCorrelationMatrix entries={allEntries} />
-              <MLFeatureAttributionMatrix entries={allEntries} />
-              <RoutingRuleLeaderboard entries={allEntries} />
-              <ErrorMessageCluster entries={allEntries} />
-              <IntentFlowMonitor entries={allEntries} />
-              <RoutingEntropyPanel entries={allEntries} />
-              <FallbackChainExplorer entries={allEntries} />
-              <DifficultyHeatmapPanel entries={allEntries} />
-              <RoutingMethodDistribution entries={allEntries} />
-              <RoutingMethodQualityPanel entries={allEntries} />
-              <RecursiveDepthMonitor entries={allEntries} />
-              <TierFloorBreachPanel entries={allEntries} />
-              <SemanticSignalBarStrip entries={allEntries} />
-              <ModelErrorFingerprint entries={allEntries} />
-              <IntentTokenMatrix entries={allEntries} />
-              <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <ShadowDiscrepancyFeed entries={allEntries} />
-              </GSPanel>
+            </SectionGroup>
+
+            {/* ── Section 2: ROUTING INTELLIGENCE ── */}
+            <SectionGroup title="Routing Intelligence" badge="5 panels" defaultExpanded={true}>
               <GSPanel panelId="tier-confusion" title="Tier Confusion Matrix" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierConfusionMatrix entries={allEntries} />
               </GSPanel>
-              <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierTrafficFlow stats={stats} />
-              </GSPanel>
-              <GSPanel panelId="tier-routing-flow" title="Tier Routing Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierRoutingFlowDiagram entries={allEntries} />
-              </GSPanel>
-              <GSPanel panelId="error-burst" title="Error Monitor" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <ErrorBurstDetector entries={allEntries} />
+              <GSPanel panelId="tier-routing-comp" title="Tier Routing Comparison" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierRoutingComparison entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="health-board" title="Routing Health" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <RoutingHealthBoard stats={stats} />
               </GSPanel>
-              <GSPanel panelId="token-histogram" title="Token Distribution" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TokenEstimateHistogram entries={allEntries} />
+              <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <ShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>
-              <GSPanel panelId="health-timeline" title="Model Health Timeline" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierHealthTimeline entries={allEntries} />
-              </GSPanel>
+              <RoutingMethodQualityPanel entries={allEntries} />
+            </SectionGroup>
+
+            {/* ── Section 3: TRAFFIC & EFFICIENCY ── */}
+            <SectionGroup title="Traffic & Efficiency" badge="10 panels" defaultExpanded={false}>
               <GSPanel panelId="traffic-heatmap" title="Traffic Heatmap" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TrafficHeatmap entries={allEntries} />
               </GSPanel>
-              <GSPanel panelId="tier-radar" title="Tier Metrics Radar" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierRadar entries={allEntries} />
+              <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierTrafficFlow stats={stats} />
               </GSPanel>
-            </div>
+              <TierLoadBalancer entries={allEntries} />
+              <CostPerOutcomePanel entries={allEntries} />
+              <TokenConsumptionPanel entries={allEntries} />
+              <TokenSaturationPanel entries={allEntries} />
+              <StatusCodeDistribution entries={allEntries} />
+              <ProviderHealthPanel entries={allEntries} />
+              <TTFTSpikeDetector entries={allEntries} />
+              <StreamingThroughputGauge entries={allEntries} />
+            </SectionGroup>
+
+            {/* ── Section 4: INTENT & QUALITY ── */}
+            <SectionGroup title="Intent & Quality" badge="12 panels" defaultExpanded={false}>
+              <GSPanel panelId="intent-flow" title="Intent Flow Monitor" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <IntentFlowMonitor entries={allEntries} />
+              </GSPanel>
+              <IntentLatencyBreakdown stats={stats} />
+              <DifficultyHeatmapPanel entries={allEntries} />
+              <RequestComplexityScore entries={allEntries} />
+              <OutcomeHeatmap entries={allEntries} />
+              <SemanticSignalBarStrip entries={allEntries} />
+              <TokenEstimateHistogram entries={allEntries} />
+              <TierHealthTimeline entries={allEntries} />
+              <TierRadar entries={allEntries} />
+              <TierEfficiencyMatrix entries={allEntries} />
+              <IntentTokenMatrix entries={allEntries} />
+              <ModelErrorFingerprint entries={allEntries} />
+            </SectionGroup>
+
+            {/* ── Section 5: OPERATIONAL METRICS ── */}
+            <SectionGroup title="Operational Metrics" badge="26 panels" defaultExpanded={false}>
+              <IntentDriftTicker stats={stats} />
+              <TierCapacityThermometer stats={stats} />
+              <CostAttributionMeter stats={stats} />
+              <ModelHealthLeaderboard stats={stats} />
+              <FallbackCascadeDiagram entries={allEntries} />
+              <RoutingAmbiguityIndicator entries={allEntries} />
+              <RoutingErrorHotspotTable entries={allEntries} />
+              <HourlyIntentComposition entries={allEntries} />
+              <RecentFallbackFeed entries={allEntries} />
+              <RoutingConfidenceTimeline entries={allEntries} />
+              <QualityGuardMonitor entries={allEntries} />
+              <TierSelectionStability entries={allEntries} />
+              <ModelRoutingDelta entries={allEntries} />
+              <ConversationLengthPanel entries={allEntries} />
+              <TierConstraintMonitor entries={allEntries} />
+              <ErrorPatternPanel entries={allEntries} />
+              <StreamingIncidentDetector entries={allEntries} />
+              <OutputTruncationRiskAdvisor entries={allEntries} />
+              <ProviderRateLimitTracker entries={allEntries} />
+              <IntentDifficultyCorrelationMatrix entries={allEntries} />
+              <MLFeatureAttributionMatrix entries={allEntries} />
+              <RoutingRuleLeaderboard entries={allEntries} />
+              <ErrorMessageCluster entries={allEntries} />
+              <RoutingEntropyPanel entries={allEntries} />
+              <FallbackChainExplorer entries={allEntries} />
+              <RoutingMethodDistribution entries={allEntries} />
+              <RecursiveDepthMonitor entries={allEntries} />
+              <TierFloorBreachPanel entries={allEntries} />
+              <GSPanel panelId="tier-routing-flow" title="Tier Routing Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
+                <TierRoutingFlowDiagram entries={allEntries} />
+              </GSPanel>
+              <TierRoutingComparison entries={allEntries} />
+            </SectionGroup>
           </div>
         ) : (
           /* ── Overview / Logs View ── */
@@ -508,6 +524,7 @@ function App() {
             </header>
 
             <div className="app-content">
+              {nav === 'overview' && <AmbientStatusBeaconStrip entries={allEntries} />}
               {/* Stats Row */}
               <StatsCards stats={stats} onRefresh={refreshAll} />
 
@@ -523,32 +540,48 @@ function App() {
                       <LatencyChart entries={allEntries} />
                     </div>
                   </GSPanel>
-                  <LatencySpreadChart entries={allEntries} />
                 </div>
               ) : null}
 
-              {/* Live request stream ticker — only in overview */}
-              {nav === 'overview' && <RequestStreamLiveTicker entries={allEntries} />}
+              {/* Recent Activity Strip — compact feed, replaces live ticker */}
+              {nav === 'overview' && <RecentActivityStrip entries={allEntries} />}
 
               {/* All Requests Table */}
-              <div className="gs-panel request-table-panel">
-                <div className="gs-panel-header">
-                  <span className="gs-eyebrow">
-                    {nav === 'overview' ? t('app.recentRequests') : t('app.allRequests')}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {totalAllEntries.toLocaleString()} total
-                  </span>
+              {nav === 'overview' ? (
+                <div className="gs-panel request-table-panel">
+                  <div className="gs-panel-header">
+                    <span className="gs-eyebrow">{t('app.recentRequests')}</span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {Math.min(5, allEntries.length)} of {totalAllEntries.toLocaleString()} recent
+                    </span>
+                  </div>
+                  <RequestTable
+                    entries={allEntries.slice(0, 5)}
+                    total={5}
+                    offset={0}
+                    limit={5}
+                    onPageChange={() => {}}
+                    onRowClick={setSelectedEntry}
+                  />
                 </div>
-                <RequestTable
-                  entries={allEntries}
-                  total={totalAllEntries}
-                  offset={(currentAllPage - 1) * pageSize}
-                  limit={pageSize}
-                  onPageChange={handleAllPageChange}
-                  onRowClick={setSelectedEntry}
-                />
-              </div>
+              ) : (
+                <div className="gs-panel request-table-panel">
+                  <div className="gs-panel-header">
+                    <span className="gs-eyebrow">{t('app.allRequests')}</span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {totalAllEntries.toLocaleString()} total
+                    </span>
+                  </div>
+                  <RequestTable
+                    entries={allEntries}
+                    total={totalAllEntries}
+                    offset={(currentAllPage - 1) * pageSize}
+                    limit={pageSize}
+                    onPageChange={handleAllPageChange}
+                    onRowClick={setSelectedEntry}
+                  />
+                </div>
+              )}
             </div>
           </>
         )}
