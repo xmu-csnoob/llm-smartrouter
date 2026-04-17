@@ -85,6 +85,7 @@ class Router:
             "task_type": scoring_result["task_type"],
             "decision_path": scoring_result["decision_path"],
             "legacy_rule_matches": legacy_rule_matches,
+            "routing_policy_version": self.config.routing_policy_version,
         }
         logger.info(
             "Scored request: requested=%s task=%s selected_tier=%s scores=%s",
@@ -147,6 +148,7 @@ class Router:
             "task_type": feature_values.get("task_type", "general"),
             "decision_path": ["legacy-rules", f"tier:{target_tier}"],
             "legacy_rule_matches": [],
+            "routing_policy_version": self.config.routing_policy_version,
         }
         return self._select_model(target_tier, route_info)
 

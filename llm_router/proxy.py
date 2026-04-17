@@ -151,6 +151,7 @@ class StreamProxy:
             "legacy_rule_matches": route_info.get("legacy_rule_matches", []),
             "model_selection": route_info.get("model_selection", {}),
             "observability_only": route_info.get("observability_only", False),
+            "routing_policy_version": route_info.get("routing_policy_version", "unknown"),
             "routed_model": model_id,
             "routed_tier": tier,
             "routed_provider": model_info.get("provider", "unknown"),

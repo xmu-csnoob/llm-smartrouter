@@ -1,5 +1,7 @@
 """YAML configuration loader with env-var expansion and hot-reload."""
 
+import hashlib
+import json
 import os
 import re
 from pathlib import Path
@@ -162,3 +164,22 @@ class RouterConfig:
             "enabled": cfg.get("enabled", True),
             "redact_paths": cfg.get("redact_paths", True),
         }
+
+    @property
+    def routing_policy_version(self) -> str:
+        """Compute a stable version string for the routing policy.
+
+        This encodes: config version, scoring config, rules, fallback config,
+        and ML routing weights. Changes to any of these produce a new version,
+        enabling correct profiling across policy changes.
+        """
+        parts = {
+            "version": self._raw.get("version", "0"),
+            "scoring": self.scoring,
+            "rules": self.rules,
+            "fallback": self.fallback,
+            "ml_weights": self.ml_routing_config.get("weights", {}),
+        }
+        payload = json.dumps(parts, sort_keys=True)
+        short = hashlib.sha256(payload.encode()).hexdigest()[:12]
+        return f"v1-{short}"

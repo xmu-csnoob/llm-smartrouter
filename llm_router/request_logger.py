@@ -180,6 +180,7 @@ class RequestLogger:
                 "avg_tier_scores": {},
                 "schema_versions": {},
                 "task_types": {},
+                "routing_policy_versions": {},
                 "passthrough_requests": 0,
                 "streaming_requests": 0,
                 "feature_snapshot_count": 0,
@@ -212,6 +213,7 @@ class RequestLogger:
         tier_score_totals = {}
         schema_versions = {}
         task_types = {}
+        routing_policy_versions = {}
         passthrough_requests = 0
         streaming_requests = 0
         feature_snapshot_count = 0
@@ -272,6 +274,9 @@ class RequestLogger:
             task_type = e.get("task_type")
             if task_type:
                 task_types[task_type] = task_types.get(task_type, 0) + 1
+
+            routing_policy_version = e.get("routing_policy_version", "unknown")
+            routing_policy_versions[routing_policy_version] = routing_policy_versions.get(routing_policy_version, 0) + 1
 
             sem = e.get("semantic_features") or {}
             intent_val = sem.get("intent")
@@ -342,6 +347,7 @@ class RequestLogger:
             "avg_tier_scores": avg_tier_scores,
             "schema_versions": schema_versions,
             "task_types": task_types,
+            "routing_policy_versions": routing_policy_versions,
             "passthrough_requests": passthrough_requests,
             "streaming_requests": streaming_requests,
             "feature_snapshot_count": feature_snapshot_count,
