@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { StatsCards } from './components/StatsCards'
 import { ModelChart } from './components/ModelChart'
 import { LatencyChart } from './components/LatencyChart'
@@ -76,18 +76,100 @@ import { GSPanel } from './components/GSPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { SectionGroup } from './components/SectionGroup'
 
+// ── shallowEqual for React.memo custom comparators ──
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false
+  const keysA = Object.keys(a as object)
+  const keysB = Object.keys(b as object)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) return false
+  }
+  return true
+}
+
+// ── Memoized analysis components ──
+const MemoAlertCorrelationMatrix = React.memo(AlertCorrelationMatrix, shallowEqual)
+const MemoIntentFlowMonitor = React.memo(IntentFlowMonitor, shallowEqual)
+const MemoTierConfusionMatrix = React.memo(TierConfusionMatrix, shallowEqual)
+const MemoLatencyJitterDetector = React.memo(LatencyJitterDetector, shallowEqual)
+const MemoTrafficHeatmap = React.memo(TrafficHeatmap, shallowEqual)
+const MemoHourlyIntentComposition = React.memo(HourlyIntentComposition, shallowEqual)
+const MemoRoutingHealthBoard = React.memo(RoutingHealthBoard, shallowEqual)
+const MemoRoutingRegressionDetector = React.memo(RoutingRegressionDetector, shallowEqual)
+const MemoTokenEstimateDriftAnalyzer = React.memo(TokenEstimateDriftAnalyzer, shallowEqual)
+const MemoTierRoutingComparison = React.memo(TierRoutingComparison, shallowEqual)
+const MemoShadowDiscrepancyFeed = React.memo(ShadowDiscrepancyFeed, shallowEqual)
+const MemoRoutingMethodQualityPanel = React.memo(RoutingMethodQualityPanel, shallowEqual)
+const MemoTierLoadBalancer = React.memo(TierLoadBalancer, shallowEqual)
+const MemoCostPerOutcomePanel = React.memo(CostPerOutcomePanel, shallowEqual)
+const MemoTokenConsumptionPanel = React.memo(TokenConsumptionPanel, shallowEqual)
+const MemoTokenSaturationPanel = React.memo(TokenSaturationPanel, shallowEqual)
+const MemoStatusCodeDistribution = React.memo(StatusCodeDistribution, shallowEqual)
+const MemoProviderHealthPanel = React.memo(ProviderHealthPanel, shallowEqual)
+const MemoTTFTSpikeDetector = React.memo(TTFTSpikeDetector, shallowEqual)
+const MemoStreamingThroughputGauge = React.memo(StreamingThroughputGauge, shallowEqual)
+const MemoIntentLatencyBreakdown = React.memo(IntentLatencyBreakdown, shallowEqual)
+const MemoDifficultyHeatmapPanel = React.memo(DifficultyHeatmapPanel, shallowEqual)
+const MemoRequestComplexityScore = React.memo(RequestComplexityScore, shallowEqual)
+const MemoOutcomeHeatmap = React.memo(OutcomeHeatmap, shallowEqual)
+const MemoSemanticSignalBarStrip = React.memo(SemanticSignalBarStrip, shallowEqual)
+const MemoTokenEstimateHistogram = React.memo(TokenEstimateHistogram, shallowEqual)
+const MemoTierHealthTimeline = React.memo(TierHealthTimeline, shallowEqual)
+const MemoTierRadar = React.memo(TierRadar, shallowEqual)
+const MemoTierEfficiencyMatrix = React.memo(TierEfficiencyMatrix, shallowEqual)
+const MemoIntentTokenMatrix = React.memo(IntentTokenMatrix, shallowEqual)
+const MemoModelErrorFingerprint = React.memo(ModelErrorFingerprint, shallowEqual)
+const MemoIntentDriftTicker = React.memo(IntentDriftTicker, shallowEqual)
+const MemoTierCapacityThermometer = React.memo(TierCapacityThermometer, shallowEqual)
+const MemoCostAttributionMeter = React.memo(CostAttributionMeter, shallowEqual)
+const MemoModelHealthLeaderboard = React.memo(ModelHealthLeaderboard, shallowEqual)
+const MemoFallbackCascadeDiagram = React.memo(FallbackCascadeDiagram, shallowEqual)
+const MemoRoutingAmbiguityIndicator = React.memo(RoutingAmbiguityIndicator, shallowEqual)
+const MemoRoutingErrorHotspotTable = React.memo(RoutingErrorHotspotTable, shallowEqual)
+const MemoRoutingConfidenceTimeline = React.memo(RoutingConfidenceTimeline, shallowEqual)
+const MemoQualityGuardMonitor = React.memo(QualityGuardMonitor, shallowEqual)
+const MemoTierSelectionStability = React.memo(TierSelectionStability, shallowEqual)
+const MemoModelRoutingDelta = React.memo(ModelRoutingDelta, shallowEqual)
+const MemoConversationLengthPanel = React.memo(ConversationLengthPanel, shallowEqual)
+const MemoTierConstraintMonitor = React.memo(TierConstraintMonitor, shallowEqual)
+const MemoErrorPatternPanel = React.memo(ErrorPatternPanel, shallowEqual)
+const MemoStreamingIncidentDetector = React.memo(StreamingIncidentDetector, shallowEqual)
+const MemoOutputTruncationRiskAdvisor = React.memo(OutputTruncationRiskAdvisor, shallowEqual)
+const MemoProviderRateLimitTracker = React.memo(ProviderRateLimitTracker, shallowEqual)
+const MemoIntentDifficultyCorrelationMatrix = React.memo(IntentDifficultyCorrelationMatrix, shallowEqual)
+const MemoMLFeatureAttributionMatrix = React.memo(MLFeatureAttributionMatrix, shallowEqual)
+const MemoRoutingRuleLeaderboard = React.memo(RoutingRuleLeaderboard, shallowEqual)
+const MemoErrorMessageCluster = React.memo(ErrorMessageCluster, shallowEqual)
+const MemoRoutingEntropyPanel = React.memo(RoutingEntropyPanel, shallowEqual)
+const MemoFallbackChainExplorer = React.memo(FallbackChainExplorer, shallowEqual)
+const MemoRoutingMethodDistribution = React.memo(RoutingMethodDistribution, shallowEqual)
+const MemoRecursiveDepthMonitor = React.memo(RecursiveDepthMonitor, shallowEqual)
+const MemoTierFloorBreachPanel = React.memo(TierFloorBreachPanel, shallowEqual)
+const MemoTierRoutingFlowDiagram = React.memo(TierRoutingFlowDiagram, shallowEqual)
+const MemoRecentFallbackFeed = React.memo(RecentFallbackFeed, shallowEqual)
+const MemoErrorBurstDetector = React.memo(ErrorBurstDetector, shallowEqual)
+
 function Clock() {
-  const [time, setTime] = useState(new Date())
+  const timeRef = useRef<HTMLSpanElement>(null)
+  const dateRef = useRef<HTMLSpanElement>(null)
   useEffect(() => {
-    const id = setInterval(() => setTime(new Date()), 1000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const update = () => {
+      const now = new Date()
+      if (dateRef.current) dateRef.current.textContent = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`
+      if (timeRef.current) timeRef.current.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    }
+    update()
+    const id = setInterval(update, 1000)
     return () => clearInterval(id)
   }, [])
-  const pad = (n: number) => String(n).padStart(2, '0')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--muted-foreground)' }}>
       <Radio size={8} style={{ color: 'var(--primary)', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
-      <span>{time.getFullYear()}-{pad(time.getMonth()+1)}-{pad(time.getDate())}</span>
-      <span style={{ color: 'var(--primary)', marginLeft: '0.25rem' }}>{pad(time.getHours())}:{pad(time.getMinutes())}:{pad(time.getSeconds())}</span>
+      <span ref={dateRef} />
+      <span ref={timeRef} style={{ color: 'var(--primary)', marginLeft: '0.25rem' }} />
     </div>
   )
 }
@@ -138,7 +220,11 @@ function App() {
     ? stats.models[selectedModel]
     : null
 
-  // Load stats
+  // Grouped entry data — prevent allEntries prop changes from propagating to every child
+  const overviewEntries = useMemo(() => allEntries.slice(0, 5), [allEntries])
+  const tableEntries = useMemo(() => allEntries, [allEntries])
+
+  // Load stats — staggered start at 0ms
   useEffect(() => {
     const load = async () => {
       try {
@@ -151,7 +237,7 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Load all logs
+  // Load all logs — staggered start at 3300ms
   useEffect(() => {
     const load = async () => {
       try {
@@ -161,12 +247,12 @@ function App() {
         setTotalAllEntries(response.total)
       } catch {}
     }
-    load()
+    const id = setTimeout(load, 3300)
     const interval = setInterval(load, 10000)
-    return () => clearInterval(interval)
+    return () => { clearTimeout(id); clearInterval(interval) }
   }, [currentAllPage])
 
-  // Load model-specific logs
+  // Load model-specific logs — staggered start at 6600ms
   useEffect(() => {
     if (!selectedModel) return
     const load = async () => {
@@ -177,9 +263,9 @@ function App() {
         setTotalModelEntries(response.total)
       } catch {}
     }
-    load()
+    const id = setTimeout(load, 6600)
     const interval = setInterval(load, 10000)
-    return () => clearInterval(interval)
+    return () => { clearTimeout(id); clearInterval(interval) }
   }, [selectedModel, currentModelPage])
 
   const handleModelSelect = (model: string) => {
@@ -203,7 +289,7 @@ function App() {
     setCurrentModelPage(Math.floor(newOffset / pageSize) + 1)
   }
 
-  const refreshAll = async () => {
+  const refreshAll = useCallback(async () => {
     try {
       const s = await fetchStats()
       setStats(s)
@@ -214,7 +300,14 @@ function App() {
       setAllEntries(response.entries)
       setTotalAllEntries(response.total)
     } catch {}
-  }
+  }, [currentAllPage])
+
+  // Debounced version for manual refresh
+  const debouncedRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleDebouncedRefresh = useCallback(() => {
+    if (debouncedRefreshRef.current) clearTimeout(debouncedRefreshRef.current)
+    debouncedRefreshRef.current = setTimeout(() => refreshAll(), 300)
+  }, [refreshAll])
 
   const handleArchive = async () => {
     if (!window.confirm(t('stats.clearLogsConfirm'))) return
@@ -370,12 +463,12 @@ function App() {
                 <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>{t('stats.shadowPolicy')}</h1>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <button onClick={handleDebouncedRefresh} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                   <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
                 </button>
               </div>
             </header>
-            <StatsCards stats={stats} onRefresh={refreshAll} />
+            <StatsCards stats={stats} onRefresh={handleDebouncedRefresh} />
             <GSPanel panelId="sp-full" title={t('stats.shadowPolicy')} fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel} style={{ flex: 1 }}>
               <ShadowPolicyPanel stats={stats} />
             </GSPanel>
@@ -389,7 +482,7 @@ function App() {
                 <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, letterSpacing: '-0.02em' }}>{t('analysis.title')}</h1>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <button onClick={handleDebouncedRefresh} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                   <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
                 </button>
               </div>
@@ -401,103 +494,103 @@ function App() {
             {/* ── Section 1: ALERTS & ANOMALIES ── */}
             <SectionGroup title="Alerts & Anomalies" badge="5 panels" defaultExpanded={true}>
               <GSPanel panelId="routing-regression" title="Routing Regression" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <RoutingRegressionDetector entries={allEntries} />
+                <MemoRoutingRegressionDetector entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="alert-correlation" title="Alert Correlation" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <AlertCorrelationMatrix entries={allEntries} />
+                <MemoAlertCorrelationMatrix entries={allEntries} />
               </GSPanel>
-              <ErrorBurstDetector entries={allEntries} />
-              <LatencyJitterDetector entries={allEntries} />
-              <TokenEstimateDriftAnalyzer entries={allEntries} />
+              <MemoErrorBurstDetector entries={allEntries} />
+              <MemoLatencyJitterDetector entries={allEntries} />
+              <MemoTokenEstimateDriftAnalyzer entries={allEntries} />
             </SectionGroup>
 
             {/* ── Section 2: ROUTING INTELLIGENCE ── */}
             <SectionGroup title="Routing Intelligence" badge="5 panels" defaultExpanded={true}>
               <GSPanel panelId="tier-confusion" title="Tier Confusion Matrix" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierConfusionMatrix entries={allEntries} />
+                <MemoTierConfusionMatrix entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="tier-routing-comp" title="Tier Routing Comparison" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierRoutingComparison entries={allEntries} />
+                <MemoTierRoutingComparison entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="health-board" title="Routing Health" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <RoutingHealthBoard stats={stats} />
+                <MemoRoutingHealthBoard stats={stats} />
               </GSPanel>
               <GSPanel panelId="shadow-discrepancy" title="Shadow Discrepancy Feed" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <ShadowDiscrepancyFeed entries={allEntries} />
+                <MemoShadowDiscrepancyFeed entries={allEntries} />
               </GSPanel>
-              <RoutingMethodQualityPanel entries={allEntries} />
+              <MemoRoutingMethodQualityPanel entries={allEntries} />
             </SectionGroup>
 
             {/* ── Section 3: TRAFFIC & EFFICIENCY ── */}
             <SectionGroup title="Traffic & Efficiency" badge="10 panels" defaultExpanded={false}>
               <GSPanel panelId="traffic-heatmap" title="Traffic Heatmap" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TrafficHeatmap entries={allEntries} />
+                <MemoTrafficHeatmap entries={allEntries} />
               </GSPanel>
               <GSPanel panelId="tier-traffic" title="Tier Traffic Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
                 <TierTrafficFlow stats={stats} />
               </GSPanel>
-              <TierLoadBalancer entries={allEntries} />
-              <CostPerOutcomePanel entries={allEntries} />
-              <TokenConsumptionPanel entries={allEntries} />
-              <TokenSaturationPanel entries={allEntries} />
-              <StatusCodeDistribution entries={allEntries} />
-              <ProviderHealthPanel entries={allEntries} />
-              <TTFTSpikeDetector entries={allEntries} />
-              <StreamingThroughputGauge entries={allEntries} />
+              <MemoTierLoadBalancer entries={allEntries} />
+              <MemoCostPerOutcomePanel entries={allEntries} />
+              <MemoTokenConsumptionPanel entries={allEntries} />
+              <MemoTokenSaturationPanel entries={allEntries} />
+              <MemoStatusCodeDistribution entries={allEntries} />
+              <MemoProviderHealthPanel entries={allEntries} />
+              <MemoTTFTSpikeDetector entries={allEntries} />
+              <MemoStreamingThroughputGauge entries={allEntries} />
             </SectionGroup>
 
             {/* ── Section 4: INTENT & QUALITY ── */}
             <SectionGroup title="Intent & Quality" badge="12 panels" defaultExpanded={false}>
               <GSPanel panelId="intent-flow" title="Intent Flow Monitor" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <IntentFlowMonitor entries={allEntries} />
+                <MemoIntentFlowMonitor entries={allEntries} />
               </GSPanel>
-              <IntentLatencyBreakdown stats={stats} />
-              <DifficultyHeatmapPanel entries={allEntries} />
-              <RequestComplexityScore entries={allEntries} />
-              <OutcomeHeatmap entries={allEntries} />
-              <SemanticSignalBarStrip entries={allEntries} />
-              <TokenEstimateHistogram entries={allEntries} />
-              <TierHealthTimeline entries={allEntries} />
-              <TierRadar entries={allEntries} />
-              <TierEfficiencyMatrix entries={allEntries} />
-              <IntentTokenMatrix entries={allEntries} />
-              <ModelErrorFingerprint entries={allEntries} />
+              <MemoIntentLatencyBreakdown stats={stats} />
+              <MemoDifficultyHeatmapPanel entries={allEntries} />
+              <MemoRequestComplexityScore entries={allEntries} />
+              <MemoOutcomeHeatmap entries={allEntries} />
+              <MemoSemanticSignalBarStrip entries={allEntries} />
+              <MemoTokenEstimateHistogram entries={allEntries} />
+              <MemoTierHealthTimeline entries={allEntries} />
+              <MemoTierRadar entries={allEntries} />
+              <MemoTierEfficiencyMatrix entries={allEntries} />
+              <MemoIntentTokenMatrix entries={allEntries} />
+              <MemoModelErrorFingerprint entries={allEntries} />
             </SectionGroup>
 
             {/* ── Section 5: OPERATIONAL METRICS ── */}
             <SectionGroup title="Operational Metrics" badge="26 panels" defaultExpanded={false}>
-              <IntentDriftTicker stats={stats} />
-              <TierCapacityThermometer stats={stats} />
-              <CostAttributionMeter stats={stats} />
-              <ModelHealthLeaderboard stats={stats} />
-              <FallbackCascadeDiagram entries={allEntries} />
-              <RoutingAmbiguityIndicator entries={allEntries} />
-              <RoutingErrorHotspotTable entries={allEntries} />
-              <HourlyIntentComposition entries={allEntries} />
-              <RecentFallbackFeed entries={allEntries} />
-              <RoutingConfidenceTimeline entries={allEntries} />
-              <QualityGuardMonitor entries={allEntries} />
-              <TierSelectionStability entries={allEntries} />
-              <ModelRoutingDelta entries={allEntries} />
-              <ConversationLengthPanel entries={allEntries} />
-              <TierConstraintMonitor entries={allEntries} />
-              <ErrorPatternPanel entries={allEntries} />
-              <StreamingIncidentDetector entries={allEntries} />
-              <OutputTruncationRiskAdvisor entries={allEntries} />
-              <ProviderRateLimitTracker entries={allEntries} />
-              <IntentDifficultyCorrelationMatrix entries={allEntries} />
-              <MLFeatureAttributionMatrix entries={allEntries} />
-              <RoutingRuleLeaderboard entries={allEntries} />
-              <ErrorMessageCluster entries={allEntries} />
-              <RoutingEntropyPanel entries={allEntries} />
-              <FallbackChainExplorer entries={allEntries} />
-              <RoutingMethodDistribution entries={allEntries} />
-              <RecursiveDepthMonitor entries={allEntries} />
-              <TierFloorBreachPanel entries={allEntries} />
+              <MemoIntentDriftTicker stats={stats} />
+              <MemoTierCapacityThermometer stats={stats} />
+              <MemoCostAttributionMeter stats={stats} />
+              <MemoModelHealthLeaderboard stats={stats} />
+              <MemoFallbackCascadeDiagram entries={allEntries} />
+              <MemoRoutingAmbiguityIndicator entries={allEntries} />
+              <MemoRoutingErrorHotspotTable entries={allEntries} />
+              <MemoHourlyIntentComposition entries={allEntries} />
+              <MemoRecentFallbackFeed entries={allEntries} />
+              <MemoRoutingConfidenceTimeline entries={allEntries} />
+              <MemoQualityGuardMonitor entries={allEntries} />
+              <MemoTierSelectionStability entries={allEntries} />
+              <MemoModelRoutingDelta entries={allEntries} />
+              <MemoConversationLengthPanel entries={allEntries} />
+              <MemoTierConstraintMonitor entries={allEntries} />
+              <MemoErrorPatternPanel entries={allEntries} />
+              <MemoStreamingIncidentDetector entries={allEntries} />
+              <MemoOutputTruncationRiskAdvisor entries={allEntries} />
+              <MemoProviderRateLimitTracker entries={allEntries} />
+              <MemoIntentDifficultyCorrelationMatrix entries={allEntries} />
+              <MemoMLFeatureAttributionMatrix entries={allEntries} />
+              <MemoRoutingRuleLeaderboard entries={allEntries} />
+              <MemoErrorMessageCluster entries={allEntries} />
+              <MemoRoutingEntropyPanel entries={allEntries} />
+              <MemoFallbackChainExplorer entries={allEntries} />
+              <MemoRoutingMethodDistribution entries={allEntries} />
+              <MemoRecursiveDepthMonitor entries={allEntries} />
+              <MemoTierFloorBreachPanel entries={allEntries} />
               <GSPanel panelId="tier-routing-flow" title="Tier Routing Flow" fullscreenPanel={fullscreenPanel} onFullscreen={setFullscreenPanel}>
-                <TierRoutingFlowDiagram entries={allEntries} />
+                <MemoTierRoutingFlowDiagram entries={allEntries} />
               </GSPanel>
-              <TierRoutingComparison entries={allEntries} />
+              <MemoTierRoutingComparison entries={allEntries} />
             </SectionGroup>
           </div>
         ) : (
@@ -517,16 +610,16 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={refreshAll} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <button onClick={handleDebouncedRefresh} style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer', transition: 'all 150ms', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                   <span style={{ fontSize: '0.875rem' }}>↻</span> Refresh
                 </button>
               </div>
             </header>
 
             <div className="app-content">
-              {nav === 'overview' && <AmbientStatusBeaconStrip entries={allEntries} />}
+              {nav === 'overview' && <AmbientStatusBeaconStrip entries={overviewEntries} />}
               {/* Stats Row */}
-              <StatsCards stats={stats} onRefresh={refreshAll} />
+              <StatsCards stats={stats} onRefresh={handleDebouncedRefresh} />
 
               {nav === 'overview' ? (
                 /* ── Overview: 2-column clean grid ── */
@@ -556,7 +649,7 @@ function App() {
                     </span>
                   </div>
                   <RequestTable
-                    entries={allEntries.slice(0, 5)}
+                    entries={overviewEntries}
                     total={5}
                     offset={0}
                     limit={5}
@@ -573,7 +666,7 @@ function App() {
                     </span>
                   </div>
                   <RequestTable
-                    entries={allEntries}
+                    entries={tableEntries}
                     total={totalAllEntries}
                     offset={(currentAllPage - 1) * pageSize}
                     limit={pageSize}
