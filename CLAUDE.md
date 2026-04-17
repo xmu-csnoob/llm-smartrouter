@@ -67,8 +67,7 @@ Client → POST /v1/messages → StreamProxy → Router → Upstream LLM API
 - **`config.py`** — YAML config loader with env-var expansion and hot-reload (`POST /reload` or `kill -HUP`)
 - **`router.py`** — Tier selection, model selection via health scoring, fallback logic
 - **`scoring.py`** — Feature extraction (10 features) and per-tier weighted scoring; classifies task_type as simple/debug/implementation/architecture/analysis/general
-- **`ml_router.py`** — Optional ML router with tier classifiers (tier3/tier2), isotonic calibration, and OOD detection; loads model artifacts from manifest JSON
-- **`model_loader.py`** — Optional bert-tiny ML model wrapper from HuggingFace; runs inference in thread pool with 50ms timeout
+- **`model_loader.py`** — BertTinyRouterModel: bert-tiny ML model wrapper from HuggingFace; runs inference in thread pool with 50ms timeout; returns tier probabilities used in scoring
 - **`proxy.py`** — Streaming proxy with SSE passthrough, fallback handling, TTFT tracking
 - **`latency.py`** — Sliding-window latency tracker with TCP-inspired exponential backoff for model cooldown
 - **`request_logger.py`** — Async JSONL logger with batch flush (zero overhead on request path)

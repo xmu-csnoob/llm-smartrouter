@@ -400,14 +400,10 @@ class RequestScorer:
         return lowest_tier
 
     def _classify_task_type(self, feature_values: dict[str, Any]) -> str:
-        # This method is kept for backward compatibility with routing feature config.
-        # It maps new intent/difficulty to the legacy taxonomy for scoring features.
-        # New taxonomy: intent (debug/design/implement/review/explain/generate/question/general)
-        #               + difficulty (simple/medium/complex)
+        # Maps intent (max-signal判决) to legacy task_type taxonomy.
+        # Downstream consumers (shadow_policy.py) depend on
+        # the 6 legacy buckets: debug, implementation, architecture, analysis, simple, general.
         intent = feature_values.get("intent", "general")
-        difficulty = feature_values.get("difficulty", "medium")
-
-        # Map intent to legacy task_type for scoring features that still reference it
         if intent == "debug":
             return "debug"
         if intent == "design":
@@ -417,10 +413,11 @@ class RequestScorer:
         if intent in ("review", "explain"):
             return "analysis"
         if intent == "generate":
-            return "implementation"  # generation is treated like implementation for tier routing
+            return "implementation"
         if intent == "question":
-            return "simple"  # questions are typically simple
-        # general or fallback
+            return "simple"
+        # general: fall back to difficulty for legacy bucket mapping
+        difficulty = feature_values.get("difficulty", "medium")
         if difficulty == "simple":
             return "simple"
         if difficulty == "complex":
