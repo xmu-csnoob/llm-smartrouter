@@ -46,6 +46,17 @@ class LatencyTracker:
             if self._consecutive_errors[model_id] >= self.error_threshold:
                 self.mark_unavailable(model_id)
 
+        # Latency-based cooldown: if rolling avg exceeds threshold, enter cooldown
+        # (mirrors the error-path cooldown behavior so slow models can recover)
+        records = self._records.get(model_id)
+        if records and len(records) >= 3:
+            recent = list(records)[-5:]
+            avg_latency = sum(r[1] for r in recent) / len(recent)
+            if avg_latency > self.latency_threshold_ms:
+                # Don't double-mark if already in cooldown
+                if model_id not in self._cooldown_until:
+                    self.mark_unavailable(model_id)
+
         status = "ok" if success else "error"
         logger.debug(f"Recorded {model_id}: {latency_ms:.0f}ms ({status}), "
                      f"consecutive_errors={self._consecutive_errors.get(model_id, 0)}")
@@ -82,14 +93,6 @@ class LatencyTracker:
         # Check consecutive errors
         if self._consecutive_errors.get(model_id, 0) >= self.error_threshold:
             return False
-
-        # Check average latency
-        records = self._records.get(model_id)
-        if records and len(records) >= 3:
-            recent = list(records)[-5:]  # last 5
-            avg_latency = sum(r[1] for r in recent) / len(recent)
-            if avg_latency > self.latency_threshold_ms:
-                return False
 
         return True
 

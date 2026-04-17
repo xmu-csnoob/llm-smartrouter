@@ -378,6 +378,21 @@ class StreamProxy:
                     if result is not None:
                         return result
 
+        # Doorbell: all tracked models appear unavailable — force-attempt every configured
+        # model to avoid silent failure. Skip the failed_model itself and only try
+        # anthropic-format providers.
+        for t, model_list in self.config.models.items():
+            for m in model_list:
+                if m["id"] == failed_model:
+                    continue
+                provider_cfg = self.config.get_provider(m["provider"])
+                if not provider_cfg or provider_cfg.get("api_format") != "anthropic":
+                    continue
+                logger.warning(f"Doorbell: forcing attempt on {m['id']} ({t}) after all candidates unavailable")
+                result = await self._attempt_anthropic(m, request_body, is_stream, log_entry, failed_model)
+                if result is not None:
+                    return result
+
         return None
 
     async def _attempt_anthropic(self, model_entry: dict, request_body: dict, is_stream: bool, log_entry: dict, failed_model: str):

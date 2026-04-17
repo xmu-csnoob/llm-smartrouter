@@ -238,21 +238,27 @@ class Router:
                 logger.info("Tier degradation: %s -> %s using %s", tier, candidate_tier, best["id"])
             return best["id"], provider_cfg, route_info
 
-        models = self.config.models.get(tier, [])
-        if models:
-            fallback_model = models[0]
-            route_info = {
-                **route_info,
-                "degraded_to_tier": None,
-                "model_selection": {
-                    "strategy": "forced-config-order",
-                    "selected_model": fallback_model["id"],
-                    "selected_model_score": None,
-                    "candidate_tier": tier,
-                    "candidates": [],
-                },
-            }
-            return fallback_model["id"], self.config.get_provider(fallback_model["provider"]), route_info
+        # Last-resort doorbell: try every configured model regardless of availability
+        # state, picking the first one that has a valid provider config. This ensures
+        # we always attempt a request rather than failing silently when all models
+        # appear unavailable due to stale tracking state.
+        for t, model_list in self.config.models.items():
+            for m in model_list:
+                provider_cfg = self.config.get_provider(m["provider"])
+                if provider_cfg and provider_cfg.get("api_format") == "anthropic":
+                    route_info = {
+                        **route_info,
+                        "degraded_to_tier": None,
+                        "model_selection": {
+                            "strategy": "doorbell",
+                            "selected_model": m["id"],
+                            "selected_model_score": None,
+                            "candidate_tier": t,
+                            "candidates": [],
+                        },
+                    }
+                    logger.warning(f"Doorbell: forcing attempt on {m['id']} ({t}) after all candidates unavailable")
+                    return m["id"], provider_cfg, route_info
 
         raise RuntimeError(f"No models configured for tier {tier}")
 
