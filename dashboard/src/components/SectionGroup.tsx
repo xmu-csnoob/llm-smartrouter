@@ -20,9 +20,7 @@ export function SectionGroup({ title, badge, defaultExpanded = true, children }:
         <span className="section-group-title">{title}</span>
         {badge && <span className="section-group-badge">{badge}</span>}
       </div>
-      <div className={`section-group-body ${expanded ? '' : 'collapsed'}`}>
-        {children}
-      </div>
+      {expanded && <div className="section-group-body">{children}</div>}
     </div>
   )
 }

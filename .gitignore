@@ -16,6 +16,14 @@ build/
 dashboard/node_modules/
 dashboard/dist/
 
+# Build cache
+.vite/
+node_modules/
+models/
+
+# Temp files
+docs/superpowers/
+
 # OS
 .DS_Store
 

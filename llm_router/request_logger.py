@@ -4,6 +4,8 @@ import asyncio
 import json
 import logging
 import shutil
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,6 +27,10 @@ class RequestLogger:
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
         self._running = False
+        self._stats_cache: dict | None = None
+        self._stats_cache_time: float = 0
+        self._stats_cache_ttl: float = 30.0
+        self._stats_cache_lock: threading.Lock = threading.Lock()
 
     def start(self):
         """Start the background flush loop."""
@@ -80,6 +86,7 @@ class RequestLogger:
             shutil.move(str(path), str(dest))
             archived.append(path.name)
 
+        self._invalidate_stats_cache()
         return {
             "archived": archived,
             "skipped": skipped,
@@ -92,23 +99,38 @@ class RequestLogger:
         Returns:
             tuple: (should_archive, reason)
         """
-        entries = self._read_all_entries()
-        total = len(entries)
+        archive_dir = self.log_dir / self.archive_dir_name
+        jsonl_files = [
+            p for p in sorted(self.log_dir.glob("requests-*.jsonl"))
+            if archive_dir not in p.parents and p.parent != archive_dir
+        ]
+        now = datetime.now(timezone.utc)
 
-        if total >= self.auto_archive_count:
-            return True, f"entry count {total} >= {self.auto_archive_count}"
+        # Age-based trigger: archive files older than auto_archive_days
+        for path in jsonl_files:
+            try:
+                # Filename pattern: requests-YYYY-MM-DD.jsonl
+                date_str = path.stem.removeprefix("requests-")
+                file_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                age_days = (now - file_date).days
+                if age_days >= self.auto_archive_days:
+                    return True, f"file {path.name} is {age_days} days old >= threshold {self.auto_archive_days}"
+            except ValueError:
+                continue
 
-        if entries:
-            oldest = min(entries, key=lambda e: e.get("timestamp", ""))
-            ts = oldest.get("timestamp", "")
-            if ts:
-                try:
-                    oldest_time = datetime.fromisoformat(ts).timestamp()
-                    age_days = (datetime.now(timezone.utc).timestamp() - oldest_time) / 86400
-                    if age_days >= self.auto_archive_days:
-                        return True, f"oldest entry age {age_days:.1f} days >= {self.auto_archive_days} days"
-                except (ValueError, OSError):
-                    pass
+        # Count-based trigger: estimate total entries across all files
+        # Since _write_batch appends to one file per day, count lines across files
+        total_entries = 0
+        for path in jsonl_files:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    total_entries += sum(1 for line in f if line.strip())
+            except OSError:
+                continue
+        file_count = len(jsonl_files)
+        entry_threshold = max(self.auto_archive_count, 1)
+        if total_entries >= entry_threshold:
+            return True, f"total entries {total_entries} >= threshold {entry_threshold}"
 
         return False, ""
 
@@ -121,9 +143,37 @@ class RequestLogger:
             logger.info(f"Auto-archive triggered: {reason}")
             result = self.archive_logs()
             logger.info(f"Auto-archived {result['total_archived']} files")
+            self._invalidate_stats_cache()
+
+    def _iter_entries_from_file(self, path: Path):
+        """Generator: yield parsed entries from a single file without loading all into memory."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        yield json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+        except OSError:
+            return
+
+    def _iter_all_entries_newest_first(self, model: str | None = None):
+        """Generator: yield entries from newest file to oldest, newest entry first."""
+        archive_dir = self.log_dir / self.archive_dir_name
+        all_files = sorted(self.log_dir.glob("requests-*.jsonl"), reverse=True)
+        for path in all_files:
+            if archive_dir in path.parents or path.parent == archive_dir:
+                continue
+            for entry in self._iter_entries_from_file(path):
+                if model and entry.get("routed_model") != model:
+                    continue
+                yield entry
 
     def get_recent(self, offset: int = 0, limit: int = 50, model: str | None = None) -> dict:
-        """Read paginated entries from log files.
+        """Read paginated entries from log files using streaming (no full-file load or sort).
 
         Returns:
             dict: { "entries": [...], "total": N, "offset": offset, "limit": limit }
@@ -134,14 +184,16 @@ class RequestLogger:
         if not self.log_dir.exists():
             return {"entries": [], "total": 0, "offset": offset, "limit": limit}
 
-        all_entries = self._read_all_entries()
-        all_entries.sort(key=lambda entry: entry.get("timestamp", ""), reverse=True)
-
-        if model:
-            all_entries = [e for e in all_entries if e.get("routed_model") == model]
-
-        total = len(all_entries)
-        entries = all_entries[offset:offset + limit]
+        entries = []
+        total = 0
+        skipped = 0
+        for entry in self._iter_all_entries_newest_first(model=model):
+            total += 1
+            if skipped < offset:
+                continue
+            entries.append(entry)
+            if len(entries) >= limit:
+                break
 
         return {
             "entries": entries,
@@ -156,10 +208,33 @@ class RequestLogger:
         entries.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
         return entries
 
+    def _invalidate_stats_cache(self):
+        """Invalidate the stats cache."""
+        with self._stats_cache_lock:
+            self._stats_cache = None
+
     def get_stats(self, hours: int = 24) -> dict:
-        """Aggregate stats from recent log files."""
+        """Aggregate stats from recent log files with TTL cache."""
         if not self.enabled:
             return {}
+
+        now = time.monotonic()
+        with self._stats_cache_lock:
+            if (
+                self._stats_cache is not None
+                and now - self._stats_cache_time < self._stats_cache_ttl
+            ):
+                return self._stats_cache
+
+        # Compute stats (expensive)
+        result = self._compute_stats(hours)
+
+        with self._stats_cache_lock:
+            self._stats_cache = result
+            self._stats_cache_time = now
+        return result
+
+    def _compute_stats(self, hours: int = 24) -> dict:
         entries = self._read_recent_entries(hours)
         if not entries:
             return {
@@ -378,6 +453,7 @@ class RequestLogger:
                         break
 
                 self._write_batch(batch)
+                self._invalidate_stats_cache()
                 self._auto_archive_if_needed()
 
             except asyncio.CancelledError:

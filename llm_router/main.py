@@ -216,11 +216,17 @@ def create_app(config: RouterConfig) -> FastAPI:
 
     @app.get("/api/logs/recent")
     async def recent_logs(offset: int = 0, limit: int = 50, model: str | None = None):
-        return req_logger.get_recent(offset, limit, model=model)
+        return JSONResponse(
+            content=req_logger.get_recent(offset, limit, model=model),
+            headers={"Cache-Control": "max-age=10"},
+        )
 
     @app.get("/api/logs/stats")
     async def log_stats(hours: int = 24):
-        return req_logger.get_stats(hours)
+        return JSONResponse(
+            content=req_logger.get_stats(hours),
+            headers={"Cache-Control": "max-age=30"},
+        )
 
     @app.post("/api/logs/archive")
     async def archive_logs():
